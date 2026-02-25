@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PlanType {
+  FREE
+  PRO
+  MASTER
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String?
+  planType     PlanType @default(FREE) @map("plan_type")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  sessions  Session[]
+  masteries UserMastery[]
+
+  @@map("users")
+}
+
+model Concept {
+  id              String   @id @default(uuid())
+  name            String   @unique
+  description     String
+  level           Int
+  prerequisiteIds Json     @default("[]") @map("prerequisite_ids")
+  masteryWeight   Float    @default(1.0) @map("mastery_weight")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  sessions  Session[]
+  masteries UserMastery[]
+
+  @@map("concepts")
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  conceptId String   @map("concept_id")
+  level     Int
+  state     String   @default("INIT")
+  tokenUsed Int      @default(0) @map("token_used")
+  score     Float?
+  context   Json?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user    User    @relation(fields: [userId], references: [id])
+  concept Concept @relation(fields: [conceptId], references: [id])
+
+  @@map("sessions")
+}
+
+model UserMastery {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  conceptId    String   @map("concept_id")
+  masteryScore Float    @default(0) @map("mastery_score")
+  attemptCount Int      @default(0) @map("attempt_count")
+  lastUpdated  DateTime @default(now()) @map("last_updated")
+
+  user    User    @relation(fields: [userId], references: [id])
+  concept Concept @relation(fields: [conceptId], references: [id])
+
+  @@unique([userId, conceptId])
+  @@map("user_masteries")
+}

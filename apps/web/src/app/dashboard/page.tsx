@@ -1,0 +1,402 @@
+'use client';
+
+import { useState } from 'react';
+import Link from 'next/link';
+import {
+  Trophy, Flame, BookOpen, TrendingUp,
+  Braces, Box, ScanSearch, FunctionSquare, Layers,
+  Cpu, ArrowUpDown, Lock as LockIcon, Pointer,
+  Globe, Repeat, Timer, Workflow, Zap,
+  ChevronRight, Sparkles, Target, AlertTriangle,
+} from 'lucide-react';
+import { useGSI, useConceptTree, useWeakConcepts, useSessions, useMasteries } from '@/hooks/use-api';
+import { DomainTabs } from '@/components/domain-tabs';
+
+/* ───── helpers ───── */
+
+function getMasteryBadge(score: number) {
+  if (score >= 80) return 'bg-emerald-50 text-emerald-600';
+  if (score >= 50) return 'bg-amber-50 text-amber-600';
+  return 'bg-red-50 text-red-500';
+}
+
+function getMasteryLabel(score: number) {
+  if (score >= 80) return 'Mastered';
+  if (score >= 50) return 'Intermediate';
+  return 'Weak';
+}
+
+function getMasteryRingColor(score: number) {
+  if (score >= 80) return '#34d399';
+  if (score >= 50) return '#fbbf24';
+  return '#f87171';
+}
+
+function ProgressRing({ value, size = 100, stroke = 8, color }: { value: number; size?: number; stroke?: number; color: string }) {
+  const radius = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (value / 100) * circumference;
+
+  return (
+    <svg width={size} height={size} className="-rotate-90">
+      <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="#f3f4f6" strokeWidth={stroke} />
+      <circle
+        cx={size / 2} cy={size / 2} r={radius} fill="none"
+        stroke={color} strokeWidth={stroke} strokeLinecap="round"
+        strokeDasharray={circumference} strokeDashoffset={offset}
+        className="transition-all duration-700"
+      />
+    </svg>
+  );
+}
+
+const conceptIcons: Record<string, React.ReactNode> = {
+  '변수 (Variables)': <Braces className="h-4 w-4" />,
+  '타입 (Types)': <ScanSearch className="h-4 w-4" />,
+  '스코프 (Scope)': <Layers className="h-4 w-4" />,
+  '함수 (Functions)': <FunctionSquare className="h-4 w-4" />,
+  '배열/객체 (Array & Object)': <Box className="h-4 w-4" />,
+  '실행 컨텍스트 (Execution Context)': <Cpu className="h-4 w-4" />,
+  '호이스팅 (Hoisting)': <ArrowUpDown className="h-4 w-4" />,
+  '클로저 (Closure)': <LockIcon className="h-4 w-4" />,
+  'this 바인딩': <Pointer className="h-4 w-4" />,
+  '프로토타입 (Prototype)': <Workflow className="h-4 w-4" />,
+  'Event Loop': <Repeat className="h-4 w-4" />,
+  'Call Stack': <Layers className="h-4 w-4" />,
+  'Task vs Microtask': <Timer className="h-4 w-4" />,
+  'Promise 내부 동작': <Globe className="h-4 w-4" />,
+  'async/await 동작 원리': <Zap className="h-4 w-4" />,
+};
+
+const levelMeta: Record<number, { label: string; color: string; bg: string }> = {
+  1: { label: '기초 개념', color: 'text-blue-600', bg: 'bg-blue-50' },
+  2: { label: '중급', color: 'text-violet-600', bg: 'bg-violet-50' },
+  3: { label: '비동기 심화', color: 'text-orange-600', bg: 'bg-orange-50' },
+  4: { label: '내부 메커니즘', color: 'text-rose-600', bg: 'bg-rose-50' },
+  5: { label: '실전 사고력', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+};
+
+/* ───── page ───── */
+
+export default function DashboardPage() {
+  const [activeDomain, setActiveDomain] = useState('javascript');
+  const { data: gsi, isLoading: gsiLoading } = useGSI();
+  const { data: concepts } = useConceptTree();
+  const { data: weakConcepts } = useWeakConcepts();
+  const { data: sessions } = useSessions();
+  const { data: masteries } = useMasteries();
+
+  const masteryMap = new Map(
+    masteries?.map((m) => [m.conceptId, m.masteryScore]) ?? [],
+  );
+
+  const levelGroups = concepts?.reduce(
+    (acc, c) => {
+      if (!acc[c.level]) acc[c.level] = [];
+      acc[c.level].push(c);
+      return acc;
+    },
+    {} as Record<number, typeof concepts>,
+  );
+
+  const gsiValue = gsi ?? 0;
+  const gsiColor = gsiValue > 0 ? getMasteryRingColor(gsiValue) : '#e5e7eb';
+  const progressPercent = concepts && concepts.length > 0
+    ? Math.round(((masteries?.length ?? 0) / concepts.length) * 100)
+    : 0;
+
+  return (
+    <div className="min-h-screen bg-gray-50 px-6 py-8">
+      <div className="mx-auto max-w-6xl">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="mb-1 text-2xl font-bold text-gray-900">대시보드</h1>
+          <p className="mb-5 text-sm text-gray-400">학습 현황을 한눈에 확인하세요</p>
+          <DomainTabs activeId={activeDomain} onChange={setActiveDomain} />
+        </div>
+
+        {/* ───── Stats Row ───── */}
+        <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          {/* GSI - with ring */}
+          <div className="rounded-3xl bg-white p-6 shadow-sm">
+            <div className="flex items-center gap-5">
+              <div className="relative">
+                <ProgressRing value={gsiValue} size={80} stroke={7} color={gsiColor} />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className={`text-lg font-extrabold ${gsiValue > 0 ? 'text-gray-900' : 'text-gray-200'}`}>
+                    {gsiLoading ? '...' : gsiValue.toFixed(0)}
+                  </span>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-400">Skill Index</p>
+                <p className="mt-1 text-sm font-bold text-gray-800">
+                  {gsiValue > 0 ? getMasteryLabel(gsiValue) : '측정 전'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Sessions */}
+          <div className="rounded-3xl bg-white p-6 shadow-sm">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-50">
+                <Flame className="h-6 w-6 text-primary-500" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-400">완료 세션</p>
+                <p className="mt-1 text-2xl font-extrabold text-gray-900">{sessions?.length ?? 0}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Progress */}
+          <div className="rounded-3xl bg-white p-6 shadow-sm">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50">
+                <BookOpen className="h-6 w-6 text-emerald-500" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-400">학습 진도</p>
+                <p className="mt-1 text-2xl font-extrabold text-gray-900">
+                  {masteries?.length ?? 0}
+                  <span className="text-sm font-medium text-gray-300"> / {concepts?.length ?? 0}</span>
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 h-2 rounded-full bg-gray-100">
+              <div
+                className="h-2 rounded-full bg-emerald-400 transition-all duration-500"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          </div>
+
+          {/* Weak count */}
+          <div className="rounded-3xl bg-white p-6 shadow-sm">
+            <div className="flex items-center gap-4">
+              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50">
+                <Target className="h-6 w-6 text-amber-500" />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-gray-400">약점 개념</p>
+                <p className="mt-1 text-2xl font-extrabold text-gray-900">{weakConcepts?.length ?? 0}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ───── Main Content ───── */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          {/* Concept Tree */}
+          <div className="lg:col-span-2 space-y-5">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-900">개념 트리</h2>
+              <Link
+                href="/session"
+                className="flex items-center gap-1 rounded-xl bg-primary-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-primary-400"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                세션 시작
+              </Link>
+            </div>
+
+            {activeDomain === 'javascript' && levelGroups ? (
+              Object.entries(levelGroups)
+                .sort(([a], [b]) => Number(a) - Number(b))
+                .map(([level, items]) => {
+                  const meta = levelMeta[Number(level)] ?? { label: `Level ${level}`, color: 'text-gray-600', bg: 'bg-gray-50' };
+                  return (
+                    <div key={level} className="rounded-3xl bg-white p-6 shadow-sm">
+                      <div className="mb-4 flex items-center gap-2.5">
+                        <span className={`flex h-7 w-7 items-center justify-center rounded-xl text-xs font-bold ${meta.bg} ${meta.color}`}>
+                          {level}
+                        </span>
+                        <span className={`text-sm font-bold ${meta.color}`}>{meta.label}</span>
+                        <span className="ml-auto rounded-full bg-gray-50 px-2.5 py-0.5 text-xs text-gray-400">{items!.length}개</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                        {items!.map((concept) => {
+                          const score = masteryMap.get(concept.id);
+                          const icon = conceptIcons[concept.name];
+                          return (
+                            <div
+                              key={concept.id}
+                              className="group flex items-center gap-3 rounded-2xl border border-gray-100 px-4 py-3 transition hover:border-primary-100 hover:bg-primary-50/30"
+                            >
+                              <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${meta.bg} ${meta.color}`}>
+                                {icon ?? <BookOpen className="h-4 w-4" />}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-medium text-gray-800 group-hover:text-primary-700">
+                                  {concept.name}
+                                </p>
+                                {score !== undefined ? (
+                                  <div className="mt-1.5 flex items-center gap-2">
+                                    <div className="h-1.5 flex-1 rounded-full bg-gray-100">
+                                      <div
+                                        className={`h-1.5 rounded-full transition-all duration-500 ${
+                                          score >= 80 ? 'bg-emerald-400' : score >= 50 ? 'bg-amber-400' : 'bg-red-400'
+                                        }`}
+                                        style={{ width: `${score}%` }}
+                                      />
+                                    </div>
+                                    <span className="shrink-0 text-xs font-semibold text-gray-500">{score.toFixed(0)}%</span>
+                                  </div>
+                                ) : (
+                                  <p className="mt-0.5 text-xs text-gray-300">미학습</p>
+                                )}
+                              </div>
+                              <ChevronRight className="h-4 w-4 shrink-0 text-gray-200 transition group-hover:text-primary-400" />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })
+            ) : activeDomain !== 'javascript' ? (
+              <div className="flex h-60 flex-col items-center justify-center rounded-3xl bg-white shadow-sm">
+                <p className="text-sm font-medium text-gray-400">준비 중인 도메인입니다</p>
+                <p className="mt-1 text-xs text-gray-300">곧 출시될 예정이에요</p>
+              </div>
+            ) : (
+              <div className="flex h-40 items-center justify-center rounded-3xl bg-white shadow-sm">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary-400 border-t-transparent" />
+              </div>
+            )}
+          </div>
+
+          {/* ───── Right Sidebar ───── */}
+          <div className="space-y-6">
+            {/* Mastery Overview */}
+            {masteries && masteries.length > 0 && (
+              <div className="rounded-3xl bg-white p-6 shadow-sm">
+                <h2 className="mb-4 flex items-center gap-2 text-base font-bold text-gray-900">
+                  <Trophy className="h-4 w-4 text-amber-400" />
+                  숙련도 분포
+                </h2>
+                <div className="flex items-center gap-3">
+                  {[
+                    { label: 'Mastered', count: masteries.filter(m => m.masteryScore >= 80).length, color: 'bg-emerald-400' },
+                    { label: 'Intermediate', count: masteries.filter(m => m.masteryScore >= 50 && m.masteryScore < 80).length, color: 'bg-amber-400' },
+                    { label: 'Weak', count: masteries.filter(m => m.masteryScore < 50).length, color: 'bg-red-400' },
+                  ].map((g) => (
+                    <div key={g.label} className="flex-1 text-center">
+                      <div className={`mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-2xl ${g.color}/10`}>
+                        <span className="text-lg font-extrabold text-gray-800">{g.count}</span>
+                      </div>
+                      <p className="text-[10px] font-medium text-gray-400">{g.label}</p>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 flex h-3 overflow-hidden rounded-full bg-gray-100">
+                  {(() => {
+                    const total = masteries.length;
+                    const mastered = masteries.filter(m => m.masteryScore >= 80).length;
+                    const inter = masteries.filter(m => m.masteryScore >= 50 && m.masteryScore < 80).length;
+                    const weak = masteries.filter(m => m.masteryScore < 50).length;
+                    return (
+                      <>
+                        {mastered > 0 && <div className="bg-emerald-400" style={{ width: `${(mastered / total) * 100}%` }} />}
+                        {inter > 0 && <div className="bg-amber-400" style={{ width: `${(inter / total) * 100}%` }} />}
+                        {weak > 0 && <div className="bg-red-400" style={{ width: `${(weak / total) * 100}%` }} />}
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
+
+            {/* Weak Concepts */}
+            <div className="rounded-3xl bg-white p-6 shadow-sm">
+              <h2 className="mb-4 flex items-center gap-2 text-base font-bold text-gray-900">
+                <AlertTriangle className="h-4 w-4 text-red-400" />
+                약점 개념
+              </h2>
+              {weakConcepts && weakConcepts.length > 0 ? (
+                <div className="space-y-3">
+                  {weakConcepts.map((w) => {
+                    const icon = conceptIcons[w.concept.name];
+                    return (
+                      <div key={w.conceptId} className="rounded-2xl bg-red-50/50 p-3">
+                        <div className="mb-2 flex items-center gap-2">
+                          <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-red-100 text-red-500">
+                            {icon ?? <AlertTriangle className="h-3.5 w-3.5" />}
+                          </div>
+                          <span className="flex-1 text-sm font-medium text-gray-700">{w.concept.name}</span>
+                          <span className="text-sm font-bold text-red-500">{w.masteryScore.toFixed(0)}%</span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-red-100">
+                          <div className="h-1.5 rounded-full bg-red-400" style={{ width: `${w.masteryScore}%` }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex h-20 flex-col items-center justify-center text-center">
+                  <p className="text-sm text-gray-300">
+                    {masteries && masteries.length > 0 ? '약점이 없습니다!' : '학습을 시작하면 표시됩니다'}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Recent Sessions */}
+            <div className="rounded-3xl bg-white p-6 shadow-sm">
+              <h2 className="mb-4 flex items-center gap-2 text-base font-bold text-gray-900">
+                <TrendingUp className="h-4 w-4 text-primary-400" />
+                최근 세션
+              </h2>
+              {sessions && sessions.length > 0 ? (
+                <div className="space-y-2.5">
+                  {sessions.slice(0, 5).map((s) => {
+                    const icon = conceptIcons[s.concept.name];
+                    return (
+                      <div key={s.id} className="flex items-center gap-3 rounded-2xl bg-gray-50 px-3.5 py-3">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary-50 text-primary-500">
+                          {icon ?? <BookOpen className="h-3.5 w-3.5" />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-gray-700">{s.concept.name}</p>
+                          <p className="text-[10px] text-gray-400">
+                            {new Date(s.createdAt).toLocaleDateString('ko-KR')}
+                          </p>
+                        </div>
+                        {s.score !== null ? (
+                          <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${getMasteryBadge(s.score)}`}>
+                            {s.score.toFixed(0)}점
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[10px] text-gray-400">{s.state}</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex h-20 flex-col items-center justify-center text-center">
+                  <p className="text-sm text-gray-300">아직 세션 기록이 없습니다</p>
+                </div>
+              )}
+            </div>
+
+            {/* Quick Start CTA */}
+            <Link
+              href="/session"
+              className="flex items-center justify-between rounded-3xl bg-gradient-to-r from-primary-500 to-violet-500 p-6 text-white shadow-md shadow-primary-200 transition hover:shadow-lg hover:shadow-primary-300"
+            >
+              <div>
+                <p className="text-base font-bold">학습을 시작하세요</p>
+                <p className="mt-1 text-xs text-white/70">새로운 개념을 탐험해보세요</p>
+              </div>
+              <ChevronRight className="h-5 w-5" />
+            </Link>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

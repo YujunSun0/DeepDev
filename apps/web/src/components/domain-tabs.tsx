@@ -1,0 +1,78 @@
+'use client';
+
+import { SiJavascript, SiReact } from 'react-icons/si';
+import { HiOutlineAcademicCap } from 'react-icons/hi2';
+import { HiOutlineServerStack } from 'react-icons/hi2';
+
+interface Domain {
+  id: string;
+  name: string;
+  available: boolean;
+  icon: React.ReactNode;
+  iconColor: string;
+}
+
+const domains: Domain[] = [
+  {
+    id: 'javascript',
+    name: 'JavaScript',
+    available: true,
+    icon: <SiJavascript className="h-4 w-4" />,
+    iconColor: 'text-yellow-400',
+  },
+  {
+    id: 'cs-fundamentals',
+    name: 'CS 기초',
+    available: false,
+    icon: <HiOutlineAcademicCap className="h-4 w-4" />,
+    iconColor: 'text-blue-400',
+  },
+  {
+    id: 'backend',
+    name: 'Backend',
+    available: false,
+    icon: <HiOutlineServerStack className="h-4 w-4" />,
+    iconColor: 'text-green-400',
+  },
+  {
+    id: 'react-internals',
+    name: 'React 내부 동작',
+    available: false,
+    icon: <SiReact className="h-4 w-4" />,
+    iconColor: 'text-cyan-400',
+  },
+];
+
+interface DomainTabsProps {
+  activeId: string;
+  onChange: (id: string) => void;
+}
+
+export function DomainTabs({ activeId, onChange }: DomainTabsProps) {
+  return (
+    <div className="flex items-center gap-2 overflow-x-auto">
+      {domains.map((d) => (
+        <button
+          key={d.id}
+          onClick={() => d.available && onChange(d.id)}
+          disabled={!d.available}
+          className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition ${
+            activeId === d.id
+              ? 'bg-primary-500 text-white shadow-sm'
+              : d.available
+                ? 'bg-white text-gray-600 hover:bg-gray-50'
+                : 'bg-gray-50 text-gray-300 cursor-not-allowed'
+          }`}
+        >
+          <span className={activeId === d.id ? 'text-white' : d.available ? d.iconColor : 'text-gray-300'}>
+            {d.icon}
+          </span>
+          {d.name}
+          {!d.available && (
+            <span className="ml-0.5 text-[10px] text-gray-300">곧 출시</span>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+}
