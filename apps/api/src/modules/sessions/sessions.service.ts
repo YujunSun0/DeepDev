@@ -1,8 +1,9 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LlmService } from '../../llm/llm.service';
 import { MasteryService } from '../mastery/mastery.service';
 import { ConceptsService } from '../concepts/concepts.service';
+import { UsageService } from '../usage/usage.service';
 import {
   CONCEPT_EXPLANATION_PROMPT,
   BASIC_QUESTION_PROMPT,
@@ -88,11 +89,15 @@ export class SessionsService {
     private readonly llm: LlmService,
     private readonly mastery: MasteryService,
     private readonly concepts: ConceptsService,
+    private readonly usage: UsageService,
   ) {}
 
   /* ── Basic CRUD ── */
 
   async create(userId: string, conceptId: string, level: number) {
+    const { allowed, reason } = await this.usage.canCreateSession(userId);
+    if (!allowed) throw new ForbiddenException(reason);
+
     const concept = await this.concepts.findById(conceptId);
     if (!concept) throw new NotFoundException('Concept not found');
 

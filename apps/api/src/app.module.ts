@@ -6,6 +6,7 @@ import { ConceptsModule } from './modules/concepts/concepts.module';
 import { SessionsModule } from './modules/sessions/sessions.module';
 import { MasteryModule } from './modules/mastery/mastery.module';
 import { ExplorationsModule } from './modules/explorations/explorations.module';
+import { UsageModule } from './modules/usage/usage.module';
 import { LlmModule } from './llm/llm.module';
 import { PrismaModule } from './prisma/prisma.module';
 
@@ -22,6 +23,7 @@ import { PrismaModule } from './prisma/prisma.module';
     SessionsModule,
     MasteryModule,
     ExplorationsModule,
+    UsageModule,
     LlmModule,
   ],
 })

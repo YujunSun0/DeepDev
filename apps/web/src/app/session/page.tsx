@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useConceptTree, useMasteries } from '@/hooks/use-api';
 import { useAuth } from '@/hooks/use-auth';
 import { DomainTabs } from '@/components/domain-tabs';
+import { UsageWarning } from '@/components/usage-warning';
 import { api } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 
@@ -79,6 +80,10 @@ export default function SessionPage() {
             학습할 개념을 선택하세요 &middot; 현재 플랜으로 Level {maxLevel}까지 이용 가능
           </p>
           <DomainTabs activeId={activeDomain} onChange={setActiveDomain} />
+        </div>
+
+        <div className="mb-6">
+          <UsageWarning />
         </div>
 
         {error && (

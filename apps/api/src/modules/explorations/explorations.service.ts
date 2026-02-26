@@ -1,6 +1,7 @@
-import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { LlmService } from '../../llm/llm.service';
+import { UsageService } from '../usage/usage.service';
 import {
   EXPLORATION_SYSTEM_PROMPT,
   EXPLORATION_TITLE_PROMPT,
@@ -11,7 +12,7 @@ export interface ChatMessage {
   content: string;
 }
 
-const MAX_TURNS = 20;
+import { getPlanLimit } from '../usage/plan-limits';
 
 @Injectable()
 export class ExplorationsService {
@@ -20,9 +21,13 @@ export class ExplorationsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly llm: LlmService,
+    private readonly usage: UsageService,
   ) {}
 
   async create(userId: string, conceptId: string, firstMessage: string) {
+    const { allowed, reason } = await this.usage.canCreateExploration(userId);
+    if (!allowed) throw new ForbiddenException(reason);
+
     const concept = await this.prisma.concept.findUnique({
       where: { id: conceptId },
     });
@@ -84,12 +89,18 @@ export class ExplorationsService {
     if (!exploration) throw new NotFoundException('탐구 대화를 찾을 수 없습니다.');
     if (exploration.userId !== userId) throw new BadRequestException('권한이 없습니다.');
 
+    const { allowed, reason } = await this.usage.canUseExploration(userId);
+    if (!allowed) throw new ForbiddenException(reason);
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const maxTurns = getPlanLimit(user?.planType ?? 'FREE').explorationTurns;
+
     const messages = exploration.messages as unknown as ChatMessage[];
 
     const userMessages = messages.filter((m) => m.role === 'user');
-    if (userMessages.length >= MAX_TURNS) {
+    if (userMessages.length >= maxTurns) {
       throw new BadRequestException(
-        `최대 대화 횟수(${MAX_TURNS}회)에 도달했습니다.`,
+        `최대 대화 횟수(${maxTurns}회)에 도달했습니다.`,
       );
     }
 
@@ -111,7 +122,7 @@ export class ExplorationsService {
     return {
       reply: aiReply,
       tokenUsed: exploration.tokenUsed + tokensUsed,
-      turnsLeft: MAX_TURNS - (userMessages.length + 1),
+      turnsLeft: maxTurns - (userMessages.length + 1),
     };
   }
 
@@ -142,6 +153,9 @@ export class ExplorationsService {
     if (!exploration) throw new NotFoundException('탐구 대화를 찾을 수 없습니다.');
     if (exploration.userId !== userId) throw new BadRequestException('권한이 없습니다.');
 
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const maxTurns = getPlanLimit(user?.planType ?? 'FREE').explorationTurns;
+
     const messages = exploration.messages as unknown as ChatMessage[];
     const userMessages = messages.filter((m) => m.role === 'user');
 
@@ -152,7 +166,7 @@ export class ExplorationsService {
       conceptId: exploration.conceptId,
       messages: messages.filter((m) => m.role !== 'system'),
       tokenUsed: exploration.tokenUsed,
-      turnsLeft: MAX_TURNS - userMessages.length,
+      turnsLeft: maxTurns - userMessages.length,
       createdAt: exploration.createdAt,
       updatedAt: exploration.updatedAt,
     };

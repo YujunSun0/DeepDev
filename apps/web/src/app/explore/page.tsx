@@ -11,6 +11,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useConcepts } from '@/hooks/use-api';
 import { explorationApi, type ExplorationMessage, type ExplorationDetail } from '@/lib/exploration-api';
 import { MarkdownRenderer } from '@/components/markdown-renderer';
+import { UsageWarning } from '@/components/usage-warning';
 
 function useTypewriter(text: string, speed = 12) {
   const [displayed, setDisplayed] = useState('');
@@ -281,8 +282,8 @@ export default function ExplorePage() {
               <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] text-gray-400">
                 {activeExploration?.conceptName}
               </span>
-              <span className="ml-auto text-[10px] text-gray-400">
-                남은 대화: {turnsLeft}회
+              <span className="ml-auto">
+                <UsageWarning compact />
               </span>
             </div>
           )}

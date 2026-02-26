@@ -92,3 +92,36 @@ export function useSessions() {
     },
   });
 }
+
+export interface UsageStatus {
+  plan: string;
+  limits: {
+    monthlySessions: number;
+    monthlyTokens: number;
+    explorationTurns: number;
+    monthlyExplorations: number;
+  };
+  month: {
+    sessions: number;
+    tokens: number;
+    explorations: number;
+  };
+  percent: {
+    sessions: number;
+    tokens: number;
+    explorations: number;
+  };
+  warning: boolean;
+  exceeded: boolean;
+}
+
+export function useUsage() {
+  return useQuery({
+    queryKey: ['usage'],
+    queryFn: async () => {
+      const { data } = await api.get<UsageStatus>('/usage');
+      return data;
+    },
+    refetchInterval: 60_000,
+  });
+}

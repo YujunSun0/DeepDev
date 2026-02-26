@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useGSI, useConceptTree, useWeakConcepts, useSessions, useMasteries } from '@/hooks/use-api';
 import { DomainTabs } from '@/components/domain-tabs';
+import { UsageWarning } from '@/components/usage-warning';
 
 /* ───── helpers ───── */
 
@@ -129,6 +130,10 @@ export default function DashboardPage() {
           <h1 className="mb-1 text-2xl font-bold text-gray-900">대시보드</h1>
           <p className="mb-5 text-sm text-gray-400">학습 현황을 한눈에 확인하세요</p>
           <DomainTabs activeId={activeDomain} onChange={setActiveDomain} />
+        </div>
+
+        <div className="mb-6">
+          <UsageWarning />
         </div>
 
         {/* ───── Stats Row ───── */}
