@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/use-auth';
 const navItems = [
   { href: '/dashboard', label: '대시보드' },
   { href: '/session', label: '학습 세션' },
+  { href: '/explore', label: '탐구 모드' },
   { href: '/pricing', label: '요금제' },
 ];
 
@@ -36,7 +37,7 @@ export function Navbar() {
                 key={item.href}
                 href={item.href}
                 className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-                  pathname === item.href
+                  pathname.startsWith(item.href)
                     ? 'bg-primary-50 text-primary-600'
                     : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
                 }`}

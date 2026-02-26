@@ -43,13 +43,14 @@ export class LlmService {
 
   async chatWithHistory(
     messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>,
+    maxTokens = 500,
   ): Promise<{ content: string; tokensUsed: number }> {
     try {
       const response = await this.openai.chat.completions.create({
         model: this.model,
         messages,
         temperature: 0.7,
-        max_tokens: 500,
+        max_tokens: maxTokens,
       });
 
       const content = response.choices[0]?.message?.content ?? '';
