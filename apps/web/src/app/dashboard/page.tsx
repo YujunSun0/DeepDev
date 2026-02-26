@@ -7,7 +7,7 @@ import {
   Braces, Box, ScanSearch, FunctionSquare, Layers,
   Cpu, ArrowUpDown, Lock as LockIcon, Pointer,
   Globe, Repeat, Timer, Workflow, Zap,
-  ChevronRight, Sparkles, Target, AlertTriangle,
+  ChevronRight, Sparkles, Target, AlertTriangle, Info,
 } from 'lucide-react';
 import { useGSI, useConceptTree, useWeakConcepts, useSessions, useMasteries } from '@/hooks/use-api';
 import { DomainTabs } from '@/components/domain-tabs';
@@ -68,6 +68,20 @@ const conceptIcons: Record<string, React.ReactNode> = {
   'async/await 동작 원리': <Zap className="h-4 w-4" />,
 };
 
+function InfoTooltip({ text }: { text: string }) {
+  return (
+    <span className="group/tip relative ml-1 inline-flex">
+      <Info className="h-3.5 w-3.5 cursor-help text-gray-300 transition hover:text-gray-400" />
+      <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 opacity-0 transition-opacity group-hover/tip:opacity-100">
+        <span className="block whitespace-nowrap rounded-xl bg-gray-800 px-3 py-2 text-xs font-medium text-white shadow-lg">
+          {text}
+          <span className="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-gray-800" />
+        </span>
+      </span>
+    </span>
+  );
+}
+
 const levelMeta: Record<number, { label: string; color: string; bg: string }> = {
   1: { label: '기초 개념', color: 'text-blue-600', bg: 'bg-blue-50' },
   2: { label: '중급', color: 'text-violet-600', bg: 'bg-violet-50' },
@@ -101,6 +115,8 @@ export default function DashboardPage() {
 
   const gsiValue = gsi ?? 0;
   const gsiColor = gsiValue > 0 ? getMasteryRingColor(gsiValue) : '#e5e7eb';
+  const closedSessions = sessions?.filter(s => s.state === 'CLOSED') ?? [];
+  const inProgressSessions = sessions?.filter(s => s.state !== 'CLOSED') ?? [];
   const progressPercent = concepts && concepts.length > 0
     ? Math.round(((masteries?.length ?? 0) / concepts.length) * 100)
     : 0;
@@ -129,7 +145,10 @@ export default function DashboardPage() {
                 </div>
               </div>
               <div>
-                <p className="text-xs font-medium text-gray-400">Skill Index</p>
+                <p className="flex items-center text-xs font-medium text-gray-400">
+                  Skill Index
+                  <InfoTooltip text="모든 개념의 평균 숙련도입니다" />
+                </p>
                 <p className="mt-1 text-sm font-bold text-gray-800">
                   {gsiValue > 0 ? getMasteryLabel(gsiValue) : '측정 전'}
                 </p>
@@ -144,8 +163,18 @@ export default function DashboardPage() {
                 <Flame className="h-6 w-6 text-primary-500" />
               </div>
               <div>
-                <p className="text-xs font-medium text-gray-400">완료 세션</p>
-                <p className="mt-1 text-2xl font-extrabold text-gray-900">{sessions?.length ?? 0}</p>
+                <p className="flex items-center text-xs font-medium text-gray-400">
+                  완료 세션
+                  <InfoTooltip text="끝까지 완료한 학습 세션 수입니다" />
+                </p>
+                <p className="mt-1 text-2xl font-extrabold text-gray-900">
+                  {closedSessions.length}
+                  {inProgressSessions.length > 0 && (
+                    <span className="ml-1.5 text-xs font-medium text-gray-300">
+                      +{inProgressSessions.length} 진행 중
+                    </span>
+                  )}
+                </p>
               </div>
             </div>
           </div>
@@ -157,7 +186,10 @@ export default function DashboardPage() {
                 <BookOpen className="h-6 w-6 text-emerald-500" />
               </div>
               <div>
-                <p className="text-xs font-medium text-gray-400">학습 진도</p>
+                <p className="flex items-center text-xs font-medium text-gray-400">
+                  학습 진도
+                  <InfoTooltip text="한 번이라도 학습한 개념 수입니다" />
+                </p>
                 <p className="mt-1 text-2xl font-extrabold text-gray-900">
                   {masteries?.length ?? 0}
                   <span className="text-sm font-medium text-gray-300"> / {concepts?.length ?? 0}</span>
@@ -179,7 +211,10 @@ export default function DashboardPage() {
                 <Target className="h-6 w-6 text-amber-500" />
               </div>
               <div>
-                <p className="text-xs font-medium text-gray-400">약점 개념</p>
+                <p className="flex items-center text-xs font-medium text-gray-400">
+                  약점 개념
+                  <InfoTooltip text="숙련도 50% 미만인 개념 수입니다" />
+                </p>
                 <p className="mt-1 text-2xl font-extrabold text-gray-900">{weakConcepts?.length ?? 0}</p>
               </div>
             </div>

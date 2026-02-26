@@ -38,7 +38,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen">
       {/* Left - Branding */}
-      <div className="relative hidden w-1/2 overflow-hidden bg-gray-900 lg:flex lg:flex-col lg:items-center lg:justify-center">
+      <div className="relative hidden w-4/5 overflow-hidden bg-gray-900 lg:flex lg:flex-col lg:items-center lg:justify-center">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary-900/50 via-gray-900 to-gray-900" />
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-primary-500/10 rounded-full blur-3xl" />
         <div className="relative z-10 px-16 text-center">

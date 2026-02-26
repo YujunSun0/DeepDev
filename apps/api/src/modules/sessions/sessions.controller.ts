@@ -12,7 +12,7 @@ import {
   CurrentUserPayload,
 } from '../../common/decorators/current-user.decorator';
 import { SessionsService } from './sessions.service';
-import { CreateSessionRequestDto, SubmitAnswerRequestDto } from './dto';
+import { CreateSessionRequestDto, SubmitAnswerRequestDto, DiscussRequestDto } from './dto';
 
 @Controller('sessions')
 @UseGuards(JwtAuthGuard)
@@ -104,5 +104,14 @@ export class SessionsController {
     @CurrentUser() user: CurrentUserPayload,
   ) {
     return this.sessionsService.getSessionSummary(id, user.id);
+  }
+
+  @Post(':id/discuss')
+  discuss(
+    @Param('id') id: string,
+    @CurrentUser() user: CurrentUserPayload,
+    @Body() dto: DiscussRequestDto,
+  ) {
+    return this.sessionsService.discuss(id, user.id, dto.stepType, dto.message);
   }
 }

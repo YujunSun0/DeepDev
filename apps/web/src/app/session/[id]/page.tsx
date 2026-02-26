@@ -9,6 +9,9 @@ import {
   ArrowRight, RotateCcw, Home, Send, Lightbulb, Code,
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { MarkdownRenderer } from '@/components/markdown-renderer';
+import { CodeEditor } from '@/components/code-editor';
+import { DiscussionChat } from '@/components/discussion-chat';
 import {
   sessionApi,
   type ExplanationData,
@@ -318,9 +321,7 @@ export default function SessionPlayPage() {
                 <BookOpen className="h-5 w-5 text-primary-500" />
                 <h2 className="text-lg font-bold text-gray-900">개념 설명</h2>
               </div>
-              <div className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700">
-                {explanation.explanation}
-              </div>
+              <MarkdownRenderer content={explanation.explanation} />
             </div>
 
             {explanation.keyPoints.length > 0 && (
@@ -346,9 +347,7 @@ export default function SessionPlayPage() {
                   <Code className="h-4 w-4 text-violet-400" />
                   <h3 className="text-sm font-bold text-gray-800">코드 예시</h3>
                 </div>
-                <pre className="overflow-x-auto rounded-2xl bg-gray-900 p-4 text-sm leading-relaxed text-gray-100">
-                  <code>{explanation.codeExample}</code>
-                </pre>
+                <MarkdownRenderer content={`\`\`\`javascript\n${explanation.codeExample}\n\`\`\``} />
               </div>
             )}
 
@@ -373,8 +372,8 @@ export default function SessionPlayPage() {
                 <Circle className="h-5 w-5 text-blue-500" />
                 <h2 className="text-lg font-bold text-gray-900">객관식 문제</h2>
               </div>
-              <div className="mb-6 whitespace-pre-wrap text-sm leading-relaxed text-gray-700">
-                {objectiveQ.question}
+              <div className="mb-6">
+                <MarkdownRenderer content={objectiveQ.question} />
               </div>
               <div className="space-y-2.5">
                 {objectiveQ.options.map((opt) => {
@@ -429,8 +428,10 @@ export default function SessionPlayPage() {
                   {objectiveResult.score}점
                 </span>
               </div>
-              <p className="text-sm leading-relaxed text-gray-700">{objectiveResult.feedback}</p>
+              <MarkdownRenderer content={objectiveResult.feedback} />
             </div>
+
+            <DiscussionChat sessionId={id} stepType="objective" />
 
             <button
               onClick={handleGetSubjective}
@@ -453,8 +454,8 @@ export default function SessionPlayPage() {
                 <BookOpen className="h-5 w-5 text-violet-500" />
                 <h2 className="text-lg font-bold text-gray-900">서술형 문제</h2>
               </div>
-              <div className="mb-6 whitespace-pre-wrap text-sm leading-relaxed text-gray-700">
-                {subjectiveQ}
+              <div className="mb-6">
+                <MarkdownRenderer content={subjectiveQ} />
               </div>
               <textarea
                 value={subjectiveAnswer}
@@ -487,7 +488,9 @@ export default function SessionPlayPage() {
                   {subjectiveResult.score}점
                 </span>
               </div>
-              <p className="mb-4 text-sm leading-relaxed text-gray-700">{subjectiveResult.feedback}</p>
+              <div className="mb-4">
+                <MarkdownRenderer content={subjectiveResult.feedback} />
+              </div>
 
               {subjectiveResult.strengths.length > 0 && (
                 <div className="mb-3">
@@ -515,6 +518,8 @@ export default function SessionPlayPage() {
               )}
             </div>
 
+            <DiscussionChat sessionId={id} stepType="subjective" />
+
             <button
               onClick={handleGetApplication}
               disabled={loading}
@@ -536,15 +541,14 @@ export default function SessionPlayPage() {
                 <Sparkles className="h-5 w-5 text-orange-500" />
                 <h2 className="text-lg font-bold text-gray-900">응용 문제</h2>
               </div>
-              <div className="mb-6 whitespace-pre-wrap text-sm leading-relaxed text-gray-700">
-                {applicationQ}
+              <div className="mb-6">
+                <MarkdownRenderer content={applicationQ} />
               </div>
-              <textarea
+              <CodeEditor
                 value={applicationAnswer}
-                onChange={(e) => setApplicationAnswer(e.target.value)}
-                placeholder="코드와 함께 설명해보세요..."
-                rows={10}
-                className="w-full resize-none rounded-2xl border-2 border-gray-100 bg-gray-50 px-4 py-3 font-mono text-sm text-gray-700 outline-none transition focus:border-primary-300 focus:bg-white"
+                onChange={setApplicationAnswer}
+                language="javascript"
+                height="300px"
               />
               <p className="mt-2 text-right text-xs text-gray-300">{applicationAnswer.length}자</p>
             </div>
@@ -570,7 +574,9 @@ export default function SessionPlayPage() {
                   {applicationResult.score}점
                 </span>
               </div>
-              <p className="mb-4 text-sm leading-relaxed text-gray-700">{applicationResult.feedback}</p>
+              <div className="mb-4">
+                <MarkdownRenderer content={applicationResult.feedback} />
+              </div>
 
               {applicationResult.strengths.length > 0 && (
                 <div className="mb-3">
@@ -597,6 +603,8 @@ export default function SessionPlayPage() {
                 </div>
               )}
             </div>
+
+            <DiscussionChat sessionId={id} stepType="application" />
 
             <button
               onClick={handleGetSummary}
@@ -642,7 +650,7 @@ export default function SessionPlayPage() {
             {/* Assessment */}
             <div className="rounded-3xl bg-white p-6 shadow-sm">
               <h3 className="mb-3 text-sm font-bold text-gray-800">종합 평가</h3>
-              <p className="text-sm leading-relaxed text-gray-600">{summaryData.summary.overallAssessment}</p>
+              <MarkdownRenderer content={summaryData.summary.overallAssessment} />
             </div>
 
             {/* Strengths & Weaknesses */}

@@ -30,7 +30,7 @@ export const EVALUATE_SUBJECTIVE_PROMPT = (
 JSON 형식으로 응답하세요:
 {
   "score": 0~100 사이의 점수,
-  "feedback": "답변에 대한 상세한 피드백",
+  "feedback": "마크다운 형식의 상세한 피드백 (코드는 \`백틱\`이나 코드블럭 사용, 핵심 용어는 **굵은글씨**)",
   "strengths": ["잘한 점 1", "잘한 점 2"],
   "improvements": ["개선할 점 1", "개선할 점 2"]
 }
@@ -62,7 +62,8 @@ JSON 형식으로 응답하세요:
   "improvements": ["개선할 점 1"]
 }
 
-채점 기준은 서술형과 동일하되, 실제 적용력과 문제 해결 능력을 더 중점적으로 평가하세요.`;
+채점 기준은 서술형과 동일하되, 실제 적용력과 문제 해결 능력을 더 중점적으로 평가하세요.
+feedback에서 코드는 \`백틱\`이나 \`\`\`코드블럭을 사용하고, 핵심 용어는 **굵은글씨**로 강조하세요.`;
 
 export const SESSION_SUMMARY_PROMPT = (
   conceptName: string,

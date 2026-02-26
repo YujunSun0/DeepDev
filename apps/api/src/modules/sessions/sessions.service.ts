@@ -11,6 +11,7 @@ import {
   EVALUATE_SUBJECTIVE_PROMPT,
   EVALUATE_APPLICATION_PROMPT,
   SESSION_SUMMARY_PROMPT,
+  DISCUSSION_SYSTEM_PROMPT,
 } from '@deepdev/prompt-templates';
 
 /* ── Session states ── */
@@ -66,12 +67,18 @@ export interface SummaryResult {
 }
 
 /* ── Context stored in session.context JSON ── */
+export interface DiscussionMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 export interface SessionContext {
   explanation?: ExplanationResult;
   objective?: ObjectiveResult & { userAnswer?: string; score?: number; feedback?: string };
   subjective?: SubjectiveResult & { userAnswer?: string; score?: number; feedback?: string; strengths?: string[]; improvements?: string[] };
   application?: ApplicationResult & { userAnswer?: string; score?: number; feedback?: string; strengths?: string[]; improvements?: string[] };
   summary?: SummaryResult;
+  discussions?: Record<string, DiscussionMessage[]>;
 }
 
 @Injectable()
@@ -422,6 +429,77 @@ export class SessionsService {
       scores,
       totalScore: Math.round(totalScore * 100) / 100,
       summary,
+    };
+  }
+
+  /* ── Discussion (follow-up chat) ── */
+
+  private readonly MAX_DISCUSSION_TURNS = 5;
+
+  async discuss(
+    sessionId: string,
+    userId: string,
+    stepType: 'objective' | 'subjective' | 'application',
+    message: string,
+  ) {
+    const session = await this.findById(sessionId);
+    if (session.userId !== userId) throw new BadRequestException('Not your session');
+
+    const ctx = (session.context as SessionContext) ?? {};
+    const stepData = ctx[stepType];
+    if (!stepData) throw new BadRequestException('해당 단계의 데이터가 없습니다');
+
+    if (!ctx.discussions) ctx.discussions = {};
+    const key = stepType;
+    if (!ctx.discussions[key]) ctx.discussions[key] = [];
+    const history = ctx.discussions[key];
+
+    if (history.filter(m => m.role === 'user').length >= this.MAX_DISCUSSION_TURNS) {
+      throw new BadRequestException(`토론은 최대 ${this.MAX_DISCUSSION_TURNS}회까지 가능합니다`);
+    }
+
+    const questionTypeLabel = {
+      objective: '객관식',
+      subjective: '서술형',
+      application: '응용',
+    }[stepType];
+
+    const correctAnswer = stepType === 'objective'
+      ? `${(stepData as any).correctAnswer}: ${(stepData as any).explanation}`
+      : (stepData as any).expectedAnswer ?? (stepData as any).evaluationCriteria?.join(', ') ?? '';
+
+    const systemPrompt = DISCUSSION_SYSTEM_PROMPT(
+      session.concept.name,
+      questionTypeLabel,
+      (stepData as any).question,
+      correctAnswer,
+      (stepData as any).userAnswer ?? '',
+      (stepData as any).feedback ?? '',
+    );
+
+    const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
+      { role: 'system', content: systemPrompt },
+      ...history.map(m => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+      { role: 'user' as const, content: message },
+    ];
+
+    const { content, tokensUsed } = await this.llm.chatWithHistory(messages);
+
+    history.push({ role: 'user', content: message });
+    history.push({ role: 'assistant', content });
+
+    await this.prisma.session.update({
+      where: { id: sessionId },
+      data: {
+        context: ctx as any,
+        tokenUsed: { increment: tokensUsed },
+      },
+    });
+
+    return {
+      reply: content,
+      remainingTurns: this.MAX_DISCUSSION_TURNS - history.filter(m => m.role === 'user').length,
+      tokensUsed,
     };
   }
 

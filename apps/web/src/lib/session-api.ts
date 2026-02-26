@@ -81,4 +81,13 @@ export const sessionApi = {
 
   getSummary: (id: string) =>
     api.post<SummaryData>(`/sessions/${id}/summary`).then(r => r.data),
+
+  discuss: (id: string, stepType: 'objective' | 'subjective' | 'application', message: string) =>
+    api.post<DiscussionResult>(`/sessions/${id}/discuss`, { stepType, message }).then(r => r.data),
 };
+
+export interface DiscussionResult {
+  reply: string;
+  remainingTurns: number;
+  tokensUsed: number;
+}
