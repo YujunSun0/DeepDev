@@ -98,7 +98,7 @@ export default function DashboardPage() {
   const { data: gsi, isLoading: gsiLoading } = useGSI();
   const { data: concepts } = useConceptTree();
   const { data: weakConcepts } = useWeakConcepts();
-  const { data: sessions } = useSessions();
+  const { data: sessionsData } = useSessions();
   const { data: masteries } = useMasteries();
 
   const masteryMap = new Map(
@@ -116,15 +116,16 @@ export default function DashboardPage() {
 
   const gsiValue = gsi ?? 0;
   const gsiColor = gsiValue > 0 ? getMasteryRingColor(gsiValue) : '#e5e7eb';
-  const closedSessions = sessions?.filter(s => s.state === 'CLOSED') ?? [];
-  const inProgressSessions = sessions?.filter(s => s.state !== 'CLOSED') ?? [];
+  const sessions = sessionsData?.items ?? [];
+  const closedSessions = sessions.filter(s => s.state === 'CLOSED');
+  const inProgressSessions = sessions.filter(s => s.state !== 'CLOSED');
   const progressPercent = concepts && concepts.length > 0
     ? Math.round(((masteries?.length ?? 0) / concepts.length) * 100)
     : 0;
 
   return (
     <div className="min-h-screen bg-gray-50 px-6 py-8">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-7xl">
         {/* Header */}
         <div className="mb-8">
           <h1 className="mb-1 text-2xl font-bold text-gray-900">대시보드</h1>
@@ -386,33 +387,56 @@ export default function DashboardPage() {
 
             {/* Recent Sessions */}
             <div className="rounded-3xl bg-white p-6 shadow-sm">
-              <h2 className="mb-4 flex items-center gap-2 text-base font-bold text-gray-900">
-                <TrendingUp className="h-4 w-4 text-primary-400" />
-                최근 세션
-              </h2>
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="flex items-center gap-2 text-base font-bold text-gray-900">
+                  <TrendingUp className="h-4 w-4 text-primary-400" />
+                  최근 세션
+                </h2>
+                {sessions.length > 0 && (
+                  <Link
+                    href="/history"
+                    className="flex items-center gap-0.5 text-xs font-medium text-gray-400 transition hover:text-primary-500"
+                  >
+                    모두 보기
+                    <ChevronRight className="h-3 w-3" />
+                  </Link>
+                )}
+              </div>
               {sessions && sessions.length > 0 ? (
                 <div className="space-y-2.5">
                   {sessions.slice(0, 5).map((s) => {
                     const icon = conceptIcons[s.concept.name];
+                    const isInProgress = s.state !== 'CLOSED';
+                    const href = isInProgress ? `/session/${s.id}` : `/history?detail=${s.id}`;
                     return (
-                      <div key={s.id} className="flex items-center gap-3 rounded-2xl bg-gray-50 px-3.5 py-3">
+                      <Link
+                        key={s.id}
+                        href={href}
+                        className="group flex items-center gap-3 rounded-2xl bg-gray-50 px-3.5 py-3 transition hover:bg-primary-50/50"
+                      >
                         <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary-50 text-primary-500">
                           {icon ?? <BookOpen className="h-3.5 w-3.5" />}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-medium text-gray-700">{s.concept.name}</p>
+                          <p className="truncate text-sm font-medium text-gray-700 group-hover:text-primary-700">{s.concept.name}</p>
                           <p className="text-[10px] text-gray-400">
                             {new Date(s.createdAt).toLocaleDateString('ko-KR')}
                           </p>
                         </div>
-                        {s.score !== null ? (
+                        {isInProgress ? (
+                          <span className="flex items-center gap-1 rounded-full bg-primary-50 px-2.5 py-1 text-[10px] font-semibold text-primary-500">
+                            <Sparkles className="h-3 w-3" />
+                            이어서 학습
+                          </span>
+                        ) : s.score !== null ? (
                           <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${getMasteryBadge(s.score)}`}>
                             {s.score.toFixed(0)}점
                           </span>
                         ) : (
-                          <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[10px] text-gray-400">{s.state}</span>
+                          <span className="rounded-full bg-gray-100 px-2.5 py-0.5 text-[10px] text-gray-400">완료</span>
                         )}
-                      </div>
+                        <ChevronRight className="h-3.5 w-3.5 shrink-0 text-gray-200 transition group-hover:text-primary-400" />
+                      </Link>
                     );
                   })}
                 </div>

@@ -1,11 +1,16 @@
-import { Navbar } from '@/components/layout/navbar';
+'use client';
+
+import { usePathname } from 'next/navigation';
+import { SidebarLayout } from '@/components/layout/sidebar-layout';
 import { ProtectedRoute } from '@/components/layout/protected-route';
 
 export default function SessionLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <ProtectedRoute>
-      <Navbar />
-      {children}
-    </ProtectedRoute>
-  );
+  const pathname = usePathname();
+  const isSessionDetail = pathname !== '/session' && pathname.startsWith('/session/');
+
+  if (isSessionDetail) {
+    return <ProtectedRoute>{children}</ProtectedRoute>;
+  }
+
+  return <SidebarLayout>{children}</SidebarLayout>;
 }

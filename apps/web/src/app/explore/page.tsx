@@ -306,7 +306,7 @@ export default function ExplorePage() {
               onSelectConcept={setSelectedConceptId}
             />
           ) : (
-            <div className="mx-auto max-w-3xl space-y-4">
+            <div className="mx-auto max-w-4xl space-y-4">
               {localMessages.map((msg, i) => (
                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div
@@ -350,7 +350,7 @@ export default function ExplorePage() {
 
         {/* 입력 영역 */}
         <div className="border-t border-gray-100 bg-white px-6 py-4">
-          <div className="mx-auto max-w-3xl">
+          <div className="mx-auto max-w-4xl">
             {showNewChat && !selectedConceptId ? (
               <p className="text-center text-sm text-gray-400">위에서 탐구할 개념을 먼저 선택해주세요</p>
             ) : turnsLeft <= 0 && !showNewChat ? (
@@ -416,7 +416,7 @@ function NewChatView({ concepts, selectedConceptId, onSelectConcept }: NewChatVi
   };
 
   return (
-    <div className="mx-auto max-w-2xl py-4">
+    <div className="mx-auto max-w-4xl py-4">
       <div className="mb-8 text-center">
         <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-primary-50">
           <Compass className="h-8 w-8 text-primary-500" />

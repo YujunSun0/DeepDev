@@ -1,11 +1,5 @@
-import { Navbar } from '@/components/layout/navbar';
-import { ProtectedRoute } from '@/components/layout/protected-route';
+import { SidebarLayout } from '@/components/layout/sidebar-layout';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <ProtectedRoute>
-      <Navbar />
-      {children}
-    </ProtectedRoute>
-  );
+  return <SidebarLayout>{children}</SidebarLayout>;
 }

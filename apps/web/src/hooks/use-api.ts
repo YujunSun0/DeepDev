@@ -83,11 +83,24 @@ export function useGSI() {
   });
 }
 
-export function useSessions() {
+interface SessionListResponse {
+  items: Session[];
+  total: number;
+  page: number;
+  totalPages: number;
+}
+
+export function useSessions(options?: { state?: string; page?: number; limit?: number }) {
+  const params = new URLSearchParams();
+  if (options?.state) params.set('state', options.state);
+  if (options?.page) params.set('page', String(options.page));
+  if (options?.limit) params.set('limit', String(options.limit));
+  const qs = params.toString();
+
   return useQuery({
-    queryKey: ['sessions'],
+    queryKey: ['sessions', options],
     queryFn: async () => {
-      const { data } = await api.get<Session[]>('/sessions');
+      const { data } = await api.get<SessionListResponse>(`/sessions${qs ? `?${qs}` : ''}`);
       return data;
     },
   });

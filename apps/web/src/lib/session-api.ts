@@ -84,6 +84,9 @@ export const sessionApi = {
 
   discuss: (id: string, stepType: 'objective' | 'subjective' | 'application', message: string) =>
     api.post<DiscussionResult>(`/sessions/${id}/discuss`, { stepType, message }).then(r => r.data),
+
+  reEvaluate: (id: string, stepType: 'subjective' | 'application') =>
+    api.post<SubjectiveAnswerResult | ApplicationAnswerResult>(`/sessions/${id}/re-evaluate`, { stepType }).then(r => r.data),
 };
 
 export interface DiscussionResult {

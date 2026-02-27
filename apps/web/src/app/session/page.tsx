@@ -73,7 +73,7 @@ export default function SessionPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 px-6 py-8">
-      <div className="mx-auto max-w-4xl">
+      <div className="mx-auto max-w-6xl">
         <div className="mb-8">
           <h1 className="mb-1 text-2xl font-bold text-gray-900">학습 세션</h1>
           <p className="mb-5 text-sm text-gray-400">

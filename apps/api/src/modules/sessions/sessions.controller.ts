@@ -4,6 +4,7 @@ import {
   Post,
   Body,
   Param,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -28,8 +29,17 @@ export class SessionsController {
   }
 
   @Get()
-  findAll(@CurrentUser() user: CurrentUserPayload) {
-    return this.sessionsService.findByUser(user.id);
+  findAll(
+    @CurrentUser() user: CurrentUserPayload,
+    @Query('state') state?: string,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.sessionsService.findByUser(user.id, {
+      state,
+      page: page ? parseInt(page, 10) : undefined,
+      limit: limit ? parseInt(limit, 10) : undefined,
+    });
   }
 
   @Get(':id')
@@ -113,5 +123,14 @@ export class SessionsController {
     @Body() dto: DiscussRequestDto,
   ) {
     return this.sessionsService.discuss(id, user.id, dto.stepType, dto.message);
+  }
+
+  @Post(':id/re-evaluate')
+  reEvaluate(
+    @Param('id') id: string,
+    @CurrentUser() user: CurrentUserPayload,
+    @Body('stepType') stepType: 'subjective' | 'application',
+  ) {
+    return this.sessionsService.reEvaluate(id, user.id, stepType);
   }
 }

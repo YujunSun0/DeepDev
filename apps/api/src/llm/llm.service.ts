@@ -12,6 +12,8 @@ export class LlmService {
   constructor(private readonly config: ConfigService) {
     this.openai = new OpenAI({
       apiKey: this.config.get<string>('OPENAI_API_KEY'),
+      timeout: 30_000,
+      maxRetries: 1,
     });
     this.model = this.config.get<string>('OPENAI_MODEL', 'gpt-4o');
   }
@@ -29,6 +31,7 @@ export class LlmService {
         ],
         response_format: { type: 'json_object' },
         temperature: 0.7,
+        max_tokens: 2000,
       });
 
       const content = response.choices[0]?.message?.content ?? '{}';

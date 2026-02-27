@@ -123,13 +123,24 @@ export class SessionsService {
     return session;
   }
 
-  async findByUser(userId: string) {
-    return this.prisma.session.findMany({
-      where: { userId },
-      include: { concept: true },
-      orderBy: { createdAt: 'desc' },
-      take: 20,
-    });
+  async findByUser(userId: string, options?: { state?: string; page?: number; limit?: number }) {
+    const page = options?.page ?? 1;
+    const limit = options?.limit ?? 20;
+    const where: any = { userId };
+    if (options?.state) where.state = options.state;
+
+    const [items, total] = await Promise.all([
+      this.prisma.session.findMany({
+        where,
+        include: { concept: true },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      this.prisma.session.count({ where }),
+    ]);
+
+    return { items, total, page, totalPages: Math.ceil(total / limit) };
   }
 
   /* ── Step 1: Start → Explain concept ── */
@@ -137,7 +148,11 @@ export class SessionsService {
   async startSession(sessionId: string, userId: string) {
     const session = await this.findById(sessionId);
     if (session.userId !== userId) throw new BadRequestException('Not your session');
-    if (session.state !== STATES.INIT) throw new BadRequestException('Session already started');
+
+    if (session.state !== STATES.INIT) {
+      const ctx = (session.context as SessionContext) ?? {};
+      return { state: session.state, explanation: ctx.explanation };
+    }
 
     const prompt = CONCEPT_EXPLANATION_PROMPT(
       session.concept.name,
@@ -166,6 +181,12 @@ export class SessionsService {
   async getObjectiveQuestion(sessionId: string, userId: string) {
     const session = await this.findById(sessionId);
     if (session.userId !== userId) throw new BadRequestException('Not your session');
+
+    if (session.state === STATES.OBJECTIVE && (session.context as SessionContext)?.objective) {
+      const ctx = session.context as SessionContext;
+      return { state: STATES.OBJECTIVE, question: ctx.objective!.question, options: ctx.objective!.options };
+    }
+
     if (session.state !== STATES.EXPLAINING) throw new BadRequestException('Not in correct state');
 
     const ctx = (session.context as SessionContext) ?? {};
@@ -234,6 +255,12 @@ export class SessionsService {
   async getSubjectiveQuestion(sessionId: string, userId: string) {
     const session = await this.findById(sessionId);
     if (session.userId !== userId) throw new BadRequestException('Not your session');
+
+    if (session.state === STATES.SUBJECTIVE && (session.context as SessionContext)?.subjective) {
+      const ctx = session.context as SessionContext;
+      return { state: STATES.SUBJECTIVE, question: ctx.subjective!.question };
+    }
+
     if (session.state !== STATES.OBJECTIVE) throw new BadRequestException('Not in correct state');
 
     const prompt = SUBJECTIVE_QUESTION_PROMPT(
@@ -270,6 +297,12 @@ export class SessionsService {
 
     const ctx = (session.context as SessionContext) ?? {};
     const sub = ctx.subjective!;
+
+    ctx.subjective = { ...sub, userAnswer: answer };
+    await this.prisma.session.update({
+      where: { id: sessionId },
+      data: { context: ctx as any },
+    });
 
     const prompt = EVALUATE_SUBJECTIVE_PROMPT(
       sub.question,
@@ -310,6 +343,12 @@ export class SessionsService {
   async getApplicationQuestion(sessionId: string, userId: string) {
     const session = await this.findById(sessionId);
     if (session.userId !== userId) throw new BadRequestException('Not your session');
+
+    if (session.state === STATES.APPLICATION && (session.context as SessionContext)?.application) {
+      const ctx = session.context as SessionContext;
+      return { state: STATES.APPLICATION, question: ctx.application!.question };
+    }
+
     if (session.state !== STATES.SUBJECTIVE) throw new BadRequestException('Not in correct state');
 
     const ctx = (session.context as SessionContext) ?? {};
@@ -351,6 +390,12 @@ export class SessionsService {
     const ctx = (session.context as SessionContext) ?? {};
     const app = ctx.application!;
 
+    ctx.application = { ...app, userAnswer: answer };
+    await this.prisma.session.update({
+      where: { id: sessionId },
+      data: { context: ctx as any },
+    });
+
     const prompt = EVALUATE_APPLICATION_PROMPT(
       app.question,
       answer,
@@ -391,6 +436,18 @@ export class SessionsService {
   async getSessionSummary(sessionId: string, userId: string) {
     const session = await this.findById(sessionId);
     if (session.userId !== userId) throw new BadRequestException('Not your session');
+
+    if (session.state === STATES.CLOSED && (session.context as SessionContext)?.summary) {
+      const ctx = session.context as SessionContext;
+      const scores = {
+        objective: ctx.objective?.score ?? 0,
+        subjective: ctx.subjective?.score ?? 0,
+        application: ctx.application?.score ?? 0,
+      };
+      const totalScore = session.score ?? 0;
+      return { state: STATES.CLOSED, scores, totalScore, summary: ctx.summary };
+    }
+
     if (session.state !== STATES.APPLICATION) throw new BadRequestException('Not in correct state');
 
     const ctx = (session.context as SessionContext) ?? {};
@@ -438,6 +495,69 @@ export class SessionsService {
   }
 
   /* ── Discussion (follow-up chat) ── */
+
+  /* ── Re-evaluate: 재채점 ── */
+
+  async reEvaluate(sessionId: string, userId: string, stepType: 'subjective' | 'application') {
+    const session = await this.findById(sessionId);
+    if (session.userId !== userId) throw new BadRequestException('Not your session');
+
+    const ctx = (session.context as SessionContext) ?? {};
+    const stepData = ctx[stepType];
+    if (!stepData?.userAnswer) throw new BadRequestException('답변이 저장되어 있지 않습니다');
+
+    if (stepType === 'subjective') {
+      const sub = ctx.subjective!;
+      const prompt = EVALUATE_SUBJECTIVE_PROMPT(sub.question, sub.userAnswer!, sub.evaluationCriteria ?? []);
+      const { content, tokensUsed } = await this.llm.chat(prompt);
+      const evaluation = this.llm.parseJson<EvaluationResult>(content);
+
+      ctx.subjective = {
+        ...sub,
+        score: Math.min(100, Math.max(0, evaluation.score)),
+        feedback: evaluation.feedback,
+        strengths: evaluation.strengths,
+        improvements: evaluation.improvements,
+      };
+
+      await this.prisma.session.update({
+        where: { id: sessionId },
+        data: { context: ctx as any, tokenUsed: { increment: tokensUsed } },
+      });
+
+      return {
+        score: ctx.subjective.score,
+        feedback: evaluation.feedback,
+        strengths: evaluation.strengths ?? [],
+        improvements: evaluation.improvements ?? [],
+      };
+    } else {
+      const app = ctx.application!;
+      const prompt = EVALUATE_APPLICATION_PROMPT(app.question, app.userAnswer!, app.expectedAnswer ?? '', app.evaluationCriteria ?? []);
+      const { content, tokensUsed } = await this.llm.chat(prompt);
+      const evaluation = this.llm.parseJson<EvaluationResult>(content);
+
+      ctx.application = {
+        ...app,
+        score: Math.min(100, Math.max(0, evaluation.score)),
+        feedback: evaluation.feedback,
+        strengths: evaluation.strengths,
+        improvements: evaluation.improvements,
+      };
+
+      await this.prisma.session.update({
+        where: { id: sessionId },
+        data: { context: ctx as any, tokenUsed: { increment: tokensUsed } },
+      });
+
+      return {
+        score: ctx.application.score,
+        feedback: evaluation.feedback,
+        strengths: evaluation.strengths ?? [],
+        improvements: evaluation.improvements ?? [],
+      };
+    }
+  }
 
   private readonly MAX_DISCUSSION_TURNS = 5;
 

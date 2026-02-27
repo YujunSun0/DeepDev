@@ -24,9 +24,40 @@ import {
 
 /* ── Types ── */
 
+interface SessionContext {
+  explanation?: ExplanationData;
+  objective?: {
+    question: string;
+    options: string[];
+    correctAnswer: string;
+    explanation: string;
+    userAnswer?: string;
+    score?: number;
+    feedback?: string;
+  };
+  subjective?: {
+    question: string;
+    userAnswer?: string;
+    score?: number;
+    feedback?: string;
+    strengths?: string[];
+    improvements?: string[];
+  };
+  application?: {
+    question: string;
+    userAnswer?: string;
+    score?: number;
+    feedback?: string;
+    strengths?: string[];
+    improvements?: string[];
+  };
+  summary?: any;
+}
+
 interface SessionInfo {
   id: string;
   state: string;
+  context?: SessionContext;
   concept: { id: string; name: string; description: string; level: number };
 }
 
@@ -66,19 +97,110 @@ export default function SessionPlayPage() {
   const [applicationResult, setApplicationResult] = useState<ApplicationAnswerResult | null>(null);
   const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
 
-  /* Load session info */
+  /* Load session info & restore state */
   useEffect(() => {
     if (!id) return;
     api.get<SessionInfo>(`/sessions/${id}`).then(({ data }) => {
       setSession(data);
-      if (data.state === 'INIT') {
-        setStep('loading');
-        handleStart(data.id);
-      } else if (data.state === 'CLOSED') {
-        setStep('summary');
-      } else {
-        setStep('loading');
-        handleStart(data.id);
+      const ctx = data.context;
+
+      switch (data.state) {
+        case 'INIT':
+          setStep('loading');
+          handleStart(data.id);
+          break;
+
+        case 'EXPLAINING':
+          if (ctx?.explanation) {
+            setExplanation(ctx.explanation);
+            setStep('explain');
+          } else {
+            handleStart(data.id);
+          }
+          break;
+
+        case 'OBJECTIVE':
+          if (ctx?.explanation) setExplanation(ctx.explanation);
+          if (ctx?.objective) {
+            if (ctx.objective.userAnswer !== undefined) {
+              setObjectiveQ({ state: 'OBJECTIVE', question: ctx.objective.question, options: ctx.objective.options });
+              setObjectiveResult({
+                isCorrect: ctx.objective.userAnswer.toUpperCase() === ctx.objective.correctAnswer.toUpperCase(),
+                score: ctx.objective.score ?? 0,
+                correctAnswer: ctx.objective.correctAnswer,
+                feedback: ctx.objective.feedback ?? '',
+              });
+              setSelectedOption(ctx.objective.userAnswer);
+              setStep('objective-result');
+            } else {
+              setObjectiveQ({ state: 'OBJECTIVE', question: ctx.objective.question, options: ctx.objective.options });
+              setStep('objective');
+            }
+          } else {
+            setStep('explain');
+          }
+          break;
+
+        case 'SUBJECTIVE':
+          if (ctx?.explanation) setExplanation(ctx.explanation);
+          if (ctx?.subjective) {
+            if (ctx.subjective.userAnswer !== undefined) {
+              setSubjectiveQ(ctx.subjective.question);
+              setSubjectiveResult({
+                score: ctx.subjective.score ?? 0,
+                feedback: ctx.subjective.feedback ?? '',
+                strengths: ctx.subjective.strengths ?? [],
+                improvements: ctx.subjective.improvements ?? [],
+              });
+              setStep('subjective-result');
+            } else {
+              setSubjectiveQ(ctx.subjective.question);
+              setStep('subjective');
+            }
+          } else {
+            setStep('objective-result');
+          }
+          break;
+
+        case 'APPLICATION':
+          if (ctx?.explanation) setExplanation(ctx.explanation);
+          if (ctx?.application) {
+            if (ctx.application.userAnswer !== undefined) {
+              setApplicationQ(ctx.application.question);
+              setApplicationResult({
+                score: ctx.application.score ?? 0,
+                feedback: ctx.application.feedback ?? '',
+                strengths: ctx.application.strengths ?? [],
+                improvements: ctx.application.improvements ?? [],
+              });
+              setStep('application-result');
+            } else {
+              setApplicationQ(ctx.application.question);
+              setStep('application');
+            }
+          } else {
+            setStep('subjective-result');
+          }
+          break;
+
+        case 'CLOSED':
+          if (ctx?.summary) {
+            setSummaryData({
+              state: 'CLOSED',
+              scores: {
+                objective: ctx.objective?.score ?? 0,
+                subjective: ctx.subjective?.score ?? 0,
+                application: ctx.application?.score ?? 0,
+              },
+              totalScore: (ctx.objective?.score ?? 0) * 0.2 + (ctx.subjective?.score ?? 0) * 0.3 + (ctx.application?.score ?? 0) * 0.5,
+              summary: ctx.summary,
+            });
+          }
+          setStep('summary');
+          break;
+
+        default:
+          handleStart(data.id);
       }
     }).catch(() => {
       setError('세션을 불러올 수 없습니다');
@@ -518,6 +640,27 @@ export default function SessionPlayPage() {
               )}
             </div>
 
+            {(!subjectiveResult.feedback || subjectiveResult.feedback.length < 20) && (
+              <button
+                onClick={async () => {
+                  setLoading(true);
+                  try {
+                    const result = await sessionApi.reEvaluate(id, 'subjective');
+                    setSubjectiveResult(result as any);
+                  } catch (e: any) {
+                    setError(e?.response?.data?.message ?? '재채점 실패');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50 py-3 text-sm font-semibold text-amber-600 transition hover:bg-amber-100 disabled:opacity-50"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                피드백이 불완전합니다 — 재채점하기
+              </button>
+            )}
+
             <DiscussionChat sessionId={id} stepType="subjective" />
 
             <button
@@ -603,6 +746,27 @@ export default function SessionPlayPage() {
                 </div>
               )}
             </div>
+
+            {(!applicationResult.feedback || applicationResult.feedback.length < 20) && (
+              <button
+                onClick={async () => {
+                  setLoading(true);
+                  try {
+                    const result = await sessionApi.reEvaluate(id, 'application');
+                    setApplicationResult(result as any);
+                  } catch (e: any) {
+                    setError(e?.response?.data?.message ?? '재채점 실패');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading}
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-amber-300 bg-amber-50 py-3 text-sm font-semibold text-amber-600 transition hover:bg-amber-100 disabled:opacity-50"
+              >
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" />}
+                피드백이 불완전합니다 — 재채점하기
+              </button>
+            )}
 
             <DiscussionChat sessionId={id} stepType="application" />
 
