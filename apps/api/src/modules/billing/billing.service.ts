@@ -103,19 +103,22 @@ export class BillingService {
   }
 
   async handleWebhook(rawBody: Buffer, signature: string) {
+    this.logger.log('Webhook received, signature present: ' + !!signature);
+
     if (!this.verifySignature(rawBody, signature)) {
-      this.logger.warn('Invalid webhook signature');
+      this.logger.warn('Invalid webhook signature - check LEMONSQUEEZY_SIGNING_SECRET');
       throw new BadRequestException('Invalid signature');
     }
 
     const payload: LsWebhookPayload = JSON.parse(rawBody.toString());
     const eventName = payload.meta.event_name;
-    const userId = payload.meta.custom_data?.user_id;
+    const customData = payload.meta.custom_data;
+    const userId = customData?.user_id ? String(customData.user_id) : undefined;
 
-    this.logger.log(`Webhook received: ${eventName} for user ${userId}`);
+    this.logger.log(`Webhook: ${eventName}, custom_data: ${JSON.stringify(customData)}`);
 
     if (!userId) {
-      this.logger.warn('Webhook missing user_id in custom_data');
+      this.logger.warn('Webhook missing user_id in custom_data - skipping');
       return { received: true };
     }
 
@@ -125,24 +128,28 @@ export class BillingService {
       return { received: true };
     }
 
-    const attrs = payload.data.attributes;
-    const subscriptionId = String(payload.data.id);
-    const customerId = String(attrs.customer_id);
+    const attrs = payload.data?.attributes ?? {};
+    const subscriptionId = String(payload.data?.id ?? '');
+    const customerId = String(attrs.customer_id ?? '');
 
     switch (eventName) {
+      case 'order_created':
       case 'subscription_created':
       case 'subscription_updated': {
-        const isActive = attrs.status === 'active' || attrs.status === 'on_trial';
+        const isActive =
+          eventName === 'order_created' ||
+          attrs.status === 'active' ||
+          attrs.status === 'on_trial';
         await this.prisma.user.update({
           where: { id: userId },
           data: {
-            planType: isActive ? 'PRO' : 'FREE',
-            lsCustomerId: customerId,
-            lsSubscriptionId: subscriptionId,
-            subscriptionStatus: attrs.status,
+            planType: isActive ? 'PRO' : user.planType,
+            lsCustomerId: customerId || user.lsCustomerId,
+            lsSubscriptionId: subscriptionId || user.lsSubscriptionId,
+            subscriptionStatus: attrs.status ?? user.subscriptionStatus,
           },
         });
-        this.logger.log(`User ${userId} plan updated to ${isActive ? 'PRO' : 'FREE'} (status: ${attrs.status})`);
+        this.logger.log(`User ${userId} plan updated to PRO (event: ${eventName})`);
         break;
       }
       case 'subscription_cancelled':

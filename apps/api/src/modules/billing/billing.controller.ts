@@ -23,15 +23,20 @@ export class BillingController {
   }
 
   @Post('webhook')
-  handleWebhook(
+  async handleWebhook(
     @Req() req: RawBodyRequest<Request>,
     @Headers('x-signature') signature: string,
   ) {
     const rawBody = req.rawBody;
     if (!rawBody) {
-      return { error: 'No raw body' };
+      return { error: 'No raw body - ensure rawBody is enabled for webhook route' };
     }
-    return this.billingService.handleWebhook(rawBody, signature ?? '');
+    try {
+      return await this.billingService.handleWebhook(rawBody, signature ?? '');
+    } catch (e) {
+      console.error('Webhook error:', e);
+      throw e;
+    }
   }
 
   @Get('portal')
