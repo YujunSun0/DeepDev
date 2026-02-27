@@ -7,7 +7,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { api } from '@/lib/api';
 
 export default function PricingPage() {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -19,6 +19,11 @@ export default function PricingPage() {
     try {
       const { data } = await api.post<{ checkoutUrl: string }>('/billing/checkout');
       window.open(data.checkoutUrl, '_blank');
+      const onFocus = () => {
+        refreshUser();
+        window.removeEventListener('focus', onFocus);
+      };
+      window.addEventListener('focus', onFocus);
     } catch (e: any) {
       setError(e?.response?.data?.message ?? '체크아웃 생성에 실패했습니다');
     } finally {

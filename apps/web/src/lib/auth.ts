@@ -53,6 +53,17 @@ export function getSavedUser(): AuthUser | null {
   try { return JSON.parse(raw); } catch { return null; }
 }
 
+export async function refreshUser(): Promise<AuthUser | null> {
+  if (typeof window === 'undefined' || !getToken()) return null;
+  try {
+    const { data } = await api.get<AuthUser>('/users/me');
+    localStorage.setItem(USER_KEY, JSON.stringify(data));
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 export function isAuthenticated(): boolean {
   return !!getToken();
 }
