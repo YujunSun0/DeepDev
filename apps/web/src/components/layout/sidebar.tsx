@@ -158,13 +158,20 @@ export function Sidebar() {
               <span>{formatTokens(usage.month.tokens)}/{formatTokens(usage.limits.monthlyTokens)}</span>
             </div>
           </div>
-          {user.planType === 'FREE' && (
+          {user.planType === 'FREE' ? (
             <Link
               href="/pricing"
               className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary-500 py-2 text-[11px] font-bold text-white transition hover:bg-primary-400"
             >
               <Zap className="h-3 w-3" />
               PRO 업그레이드
+            </Link>
+          ) : (
+            <Link
+              href="/pricing"
+              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-gray-100 py-2 text-[11px] font-semibold text-gray-600 transition hover:bg-gray-200"
+            >
+              구독 관리
             </Link>
           )}
         </div>
