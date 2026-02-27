@@ -6,8 +6,14 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
 
   const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000';
+  const allowedOrigins = corsOrigin.split(',').map(o => o.trim()).filter(Boolean);
   app.enableCors({
-    origin: corsOrigin.split(',').map(o => o.trim()),
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      if (origin.endsWith('.vercel.app')) return callback(null, true);
+      callback(null, false);
+    },
     credentials: true,
   });
 
