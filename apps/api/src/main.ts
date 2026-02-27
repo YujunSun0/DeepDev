@@ -5,8 +5,9 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
 
+  const corsOrigin = process.env.CORS_ORIGIN || 'http://localhost:3000';
   app.enableCors({
-    origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
+    origin: corsOrigin.split(',').map(o => o.trim()),
     credentials: true,
   });
 
@@ -20,8 +21,8 @@ async function bootstrap() {
 
   app.setGlobalPrefix('api');
 
-  const port = process.env.API_PORT || 4000;
-  await app.listen(port);
-  console.log(`DeepDev API running on http://localhost:${port}`);
+  const port = process.env.PORT || process.env.API_PORT || 4000;
+  await app.listen(port, '0.0.0.0');
+  console.log(`DeepDev API running on port ${port}`);
 }
 bootstrap();
