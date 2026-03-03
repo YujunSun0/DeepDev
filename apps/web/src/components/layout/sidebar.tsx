@@ -63,7 +63,9 @@ export function Sidebar() {
   const plan = planStyle[user.planType] ?? planStyle.FREE;
 
   const usagePercent = usage
-    ? Math.max(usage.percent.sessions, usage.percent.tokens, usage.percent.explorations)
+    ? Math.round(
+        (usage.percent.sessions + usage.percent.tokens + usage.percent.explorations) / 3
+      )
     : 0;
 
   const sidebarContent = (
@@ -158,6 +160,10 @@ export function Sidebar() {
             <div className="flex justify-between">
               <span>토큰</span>
               <span>{formatTokens(usage.month.tokens)}/{formatTokens(usage.limits.monthlyTokens)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>탐구</span>
+              <span>{usage.month.explorations}/{usage.limits.monthlyExplorations}</span>
             </div>
           </div>
           {user.planType === 'FREE' ? (

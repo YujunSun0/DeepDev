@@ -10,7 +10,7 @@ export interface ExplorationSummary {
   title: string;
   conceptName: string;
   tokenUsed: number;
-  messageCount: number;
+  turnCount: number;
   createdAt: string;
   updatedAt: string;
 }

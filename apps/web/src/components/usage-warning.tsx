@@ -21,16 +21,19 @@ export function UsageWarning({ compact = false }: UsageWarningProps) {
 
   if (!usage || dismissed) return null;
 
+  const avgPercent = Math.round(
+    (usage.percent.sessions + usage.percent.tokens + usage.percent.explorations) / 3
+  );
   const maxPercent = Math.max(
     usage.percent.sessions,
     usage.percent.tokens,
     usage.percent.explorations,
   );
 
-  if (maxPercent < 80) return null;
+  if (avgPercent < 80 && maxPercent < 100) return null;
 
   const isExceeded = maxPercent >= 100;
-  const isNearLimit = maxPercent >= 90;
+  const isNearLimit = avgPercent >= 90 || maxPercent >= 90;
 
   if (compact) {
     return (
@@ -45,7 +48,7 @@ export function UsageWarning({ compact = false }: UsageWarningProps) {
         <span>
           {isExceeded
             ? '이번 달 사용 한도에 도달했습니다'
-            : `이번 달 사용량 ${maxPercent}% 도달`}
+            : `이번 달 사용량 ${avgPercent}% 도달`}
         </span>
         {usage.plan === 'FREE' && (
           <Link

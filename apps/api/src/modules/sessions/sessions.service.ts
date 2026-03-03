@@ -13,6 +13,7 @@ import {
   EVALUATE_APPLICATION_PROMPT,
   SESSION_SUMMARY_PROMPT,
   DISCUSSION_SYSTEM_PROMPT,
+  EXPLANATION_DISCUSSION_SYSTEM_PROMPT,
 } from '@deepdev/prompt-templates';
 
 /* ── Session states ── */
@@ -564,14 +565,14 @@ export class SessionsService {
   async discuss(
     sessionId: string,
     userId: string,
-    stepType: 'objective' | 'subjective' | 'application',
+    stepType: 'explanation' | 'objective' | 'subjective' | 'application',
     message: string,
   ) {
     const session = await this.findById(sessionId);
     if (session.userId !== userId) throw new BadRequestException('Not your session');
 
     const ctx = (session.context as SessionContext) ?? {};
-    const stepData = ctx[stepType];
+    const stepData = stepType === 'explanation' ? ctx.explanation : ctx[stepType];
     if (!stepData) throw new BadRequestException('해당 단계의 데이터가 없습니다');
 
     if (!ctx.discussions) ctx.discussions = {};
@@ -583,24 +584,27 @@ export class SessionsService {
       throw new BadRequestException(`토론은 최대 ${this.MAX_DISCUSSION_TURNS}회까지 가능합니다`);
     }
 
-    const questionTypeLabel = {
-      objective: '객관식',
-      subjective: '서술형',
-      application: '응용',
-    }[stepType];
-
-    const correctAnswer = stepType === 'objective'
-      ? `${(stepData as any).correctAnswer}: ${(stepData as any).explanation}`
-      : (stepData as any).expectedAnswer ?? (stepData as any).evaluationCriteria?.join(', ') ?? '';
-
-    const systemPrompt = DISCUSSION_SYSTEM_PROMPT(
-      session.concept.name,
-      questionTypeLabel,
-      (stepData as any).question,
-      correctAnswer,
-      (stepData as any).userAnswer ?? '',
-      (stepData as any).feedback ?? '',
-    );
+    const systemPrompt = stepType === 'explanation'
+      ? EXPLANATION_DISCUSSION_SYSTEM_PROMPT(
+          session.concept.name,
+          (stepData as ExplanationResult).explanation,
+          (stepData as ExplanationResult).keyPoints ?? [],
+          (stepData as ExplanationResult).codeExample ?? '',
+        )
+      : (() => {
+          const questionTypeLabel = { objective: '객관식', subjective: '서술형', application: '응용' }[stepType];
+          const correctAnswer = stepType === 'objective'
+            ? `${(stepData as any).correctAnswer}: ${(stepData as any).explanation}`
+            : (stepData as any).expectedAnswer ?? (stepData as any).evaluationCriteria?.join(', ') ?? '';
+          return DISCUSSION_SYSTEM_PROMPT(
+            session.concept.name,
+            questionTypeLabel,
+            (stepData as any).question,
+            correctAnswer,
+            (stepData as any).userAnswer ?? '',
+            (stepData as any).feedback ?? '',
+          );
+        })();
 
     const messages: Array<{ role: 'system' | 'user' | 'assistant'; content: string }> = [
       { role: 'system', content: systemPrompt },

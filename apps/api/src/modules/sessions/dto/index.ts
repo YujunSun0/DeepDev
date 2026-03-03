@@ -17,8 +17,8 @@ export class SubmitAnswerRequestDto {
 
 export class DiscussRequestDto {
   @IsString()
-  @IsIn(['objective', 'subjective', 'application'])
-  stepType!: 'objective' | 'subjective' | 'application';
+  @IsIn(['explanation', 'objective', 'subjective', 'application'])
+  stepType!: 'explanation' | 'objective' | 'subjective' | 'application';
 
   @IsString()
   message!: string;

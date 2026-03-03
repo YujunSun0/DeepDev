@@ -52,6 +52,7 @@ interface SessionContext {
     improvements?: string[];
   };
   summary?: any;
+  discussions?: Record<string, { role: 'user' | 'assistant'; content: string }[]>;
 }
 
 interface SessionInfo {
@@ -72,6 +73,20 @@ const STEP_LABELS: Record<string, string> = {
 };
 
 const STEP_ORDER = ['explain', 'objective', 'subjective', 'application', 'summary'] as const;
+
+const MAX_DISCUSSION_TURNS = 5;
+
+function getDiscussionState(
+  session: SessionInfo | null,
+  stepType: 'explanation' | 'objective' | 'subjective' | 'application'
+) {
+  const history = session?.context?.discussions?.[stepType] ?? [];
+  const usedCount = history.filter(m => m.role === 'user').length;
+  return {
+    initialRemainingTurns: MAX_DISCUSSION_TURNS - usedCount,
+    initialMessages: history,
+  };
+}
 
 /* ── Page ── */
 
@@ -473,6 +488,12 @@ export default function SessionPlayPage() {
               </div>
             )}
 
+            <DiscussionChat
+              sessionId={id}
+              stepType="explanation"
+              {...getDiscussionState(session, 'explanation')}
+            />
+
             <button
               onClick={handleGetObjective}
               disabled={loading}
@@ -553,7 +574,11 @@ export default function SessionPlayPage() {
               <MarkdownRenderer content={objectiveResult.feedback} />
             </div>
 
-            <DiscussionChat sessionId={id} stepType="objective" />
+            <DiscussionChat
+              sessionId={id}
+              stepType="objective"
+              {...getDiscussionState(session, 'objective')}
+            />
 
             <button
               onClick={handleGetSubjective}
@@ -661,7 +686,11 @@ export default function SessionPlayPage() {
               </button>
             )}
 
-            <DiscussionChat sessionId={id} stepType="subjective" />
+            <DiscussionChat
+              sessionId={id}
+              stepType="subjective"
+              {...getDiscussionState(session, 'subjective')}
+            />
 
             <button
               onClick={handleGetApplication}
@@ -768,7 +797,11 @@ export default function SessionPlayPage() {
               </button>
             )}
 
-            <DiscussionChat sessionId={id} stepType="application" />
+            <DiscussionChat
+              sessionId={id}
+              stepType="application"
+              {...getDiscussionState(session, 'application')}
+            />
 
             <button
               onClick={handleGetSummary}

@@ -133,15 +133,19 @@ export class ExplorationsService {
       orderBy: { updatedAt: 'desc' },
     });
 
-    return explorations.map((e) => ({
-      id: e.id,
-      title: e.title,
-      conceptName: e.concept.name,
-      tokenUsed: e.tokenUsed,
-      messageCount: (e.messages as unknown as ChatMessage[]).filter((m) => m.role !== 'system').length,
-      createdAt: e.createdAt,
-      updatedAt: e.updatedAt,
-    }));
+    return explorations.map((e) => {
+      const messages = e.messages as unknown as ChatMessage[];
+      const turnCount = messages.filter((m) => m.role === 'user').length;
+      return {
+        id: e.id,
+        title: e.title,
+        conceptName: e.concept.name,
+        tokenUsed: e.tokenUsed,
+        turnCount,
+        createdAt: e.createdAt,
+        updatedAt: e.updatedAt,
+      };
+    });
   }
 
   async findById(explorationId: string, userId: string) {

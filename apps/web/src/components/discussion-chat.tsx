@@ -13,8 +13,11 @@ interface Message {
 
 interface DiscussionChatProps {
   sessionId: string;
-  stepType: 'objective' | 'subjective' | 'application';
+  stepType: 'explanation' | 'objective' | 'subjective' | 'application';
   maxTurns?: number;
+  /** 서버에 저장된 토론 기록 기반 초기값. 페이지 복귀 시 올바른 횟수 표시 */
+  initialRemainingTurns?: number;
+  initialMessages?: { role: 'user' | 'assistant'; content: string }[];
 }
 
 function useTypewriter(text: string, speed = 15) {
@@ -68,13 +71,25 @@ function TypewriterMessage({ content, onDone }: { content: string; onDone: () =>
   );
 }
 
-export function DiscussionChat({ sessionId, stepType, maxTurns = 5 }: DiscussionChatProps) {
+const MAX_TURNS = 5;
+
+export function DiscussionChat({
+  sessionId,
+  stepType,
+  maxTurns = MAX_TURNS,
+  initialRemainingTurns,
+  initialMessages,
+}: DiscussionChatProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() =>
+    (initialMessages ?? []).map(m => ({ ...m, isTyping: false }))
+  );
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [typing, setTyping] = useState(false);
-  const [remainingTurns, setRemainingTurns] = useState(maxTurns);
+  const [remainingTurns, setRemainingTurns] = useState(
+    initialRemainingTurns ?? maxTurns
+  );
   const [error, setError] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -120,7 +135,7 @@ export function DiscussionChat({ sessionId, stepType, maxTurns = 5 }: Discussion
     }
   };
 
-  const stepLabel = { objective: '객관식', subjective: '서술형', application: '응용' }[stepType];
+  const stepLabel = { explanation: '개념설명', objective: '객관식', subjective: '서술형', application: '응용' }[stepType];
 
   if (!isOpen) {
     return (

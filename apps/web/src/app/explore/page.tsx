@@ -248,7 +248,7 @@ export default function ExplorePage() {
                   <span className="text-[10px] text-gray-300">·</span>
                   <span className="flex items-center gap-0.5 text-[10px] text-gray-400">
                     <MessageCircle className="h-2.5 w-2.5" />
-                    {exp.messageCount}
+                    {exp.turnCount}
                   </span>
                 </div>
               </button>
