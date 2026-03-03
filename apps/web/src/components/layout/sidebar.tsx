@@ -10,6 +10,7 @@ import {
   MessageCircle, CreditCard, LogOut, ChevronLeft,
   Menu, Zap, X, Sparkles,
 } from 'lucide-react';
+import { ConfirmModal } from '@/components/ui/confirm-modal';
 
 const NAV_SECTIONS = [
   {
@@ -46,6 +47,7 @@ export function Sidebar() {
   const { data: usage } = useUsage();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -197,7 +199,7 @@ export function Sidebar() {
             </div>
           )}
           <button
-            onClick={logout}
+            onClick={() => setLogoutConfirmOpen(true)}
             className={`shrink-0 rounded-lg p-2 text-gray-400 transition hover:bg-red-50 hover:text-red-500 ${collapsed ? '' : ''}`}
             title="로그아웃"
           >
@@ -243,6 +245,17 @@ export function Sidebar() {
       >
         {sidebarContent}
       </aside>
+
+      <ConfirmModal
+        open={logoutConfirmOpen}
+        onClose={() => setLogoutConfirmOpen(false)}
+        onConfirm={logout}
+        title="로그아웃"
+        message="정말 로그아웃 하시겠습니까?"
+        confirmText="로그아웃"
+        cancelText="취소"
+        variant="danger"
+      />
     </>
   );
 }
