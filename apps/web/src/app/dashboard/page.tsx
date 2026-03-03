@@ -10,8 +10,10 @@ import {
   ChevronRight, Sparkles, Target, AlertTriangle, Info,
 } from 'lucide-react';
 import { useGSI, useConceptTree, useWeakConcepts, useSessions, useMasteries } from '@/hooks/use-api';
+import { useAuth } from '@/hooks/use-auth';
 import { DomainTabs } from '@/components/domain-tabs';
 import { UsageWarning } from '@/components/usage-warning';
+import { GrowthChart } from '@/components/growth-chart';
 
 /* ───── helpers ───── */
 
@@ -98,8 +100,12 @@ export default function DashboardPage() {
   const { data: gsi, isLoading: gsiLoading } = useGSI();
   const { data: concepts } = useConceptTree();
   const { data: weakConcepts } = useWeakConcepts();
+  const { user } = useAuth();
   const { data: sessionsData } = useSessions();
+  const { data: closedSessionsData } = useSessions({ state: 'CLOSED', limit: 100 });
   const { data: masteries } = useMasteries();
+
+  const isPro = user?.planType === 'PRO' || user?.planType === 'MASTER';
 
   const masteryMap = new Map(
     masteries?.map((m) => [m.conceptId, m.masteryScore]) ?? [],
@@ -118,6 +124,7 @@ export default function DashboardPage() {
   const gsiColor = gsiValue > 0 ? getMasteryRingColor(gsiValue) : '#e5e7eb';
   const sessions = sessionsData?.items ?? [];
   const closedSessions = sessions.filter(s => s.state === 'CLOSED');
+  const chartSessions = closedSessionsData?.items ?? [];
   const inProgressSessions = sessions.filter(s => s.state !== 'CLOSED');
   const progressPercent = concepts && concepts.length > 0
     ? Math.round(((masteries?.length ?? 0) / concepts.length) * 100)
@@ -311,6 +318,30 @@ export default function DashboardPage() {
 
           {/* ───── Right Sidebar ───── */}
           <div className="space-y-6">
+            {/* Growth Chart (Pro only) */}
+            <div className="rounded-3xl bg-white p-6 shadow-sm">
+              <h2 className="mb-4 flex items-center gap-2 text-base font-bold text-gray-900">
+                <TrendingUp className="h-4 w-4 text-primary-400" />
+                성장 그래프
+                {!isPro && <LockIcon className="h-3.5 w-3.5 text-gray-300" />}
+              </h2>
+              {isPro ? (
+                <GrowthChart sessions={chartSessions} />
+              ) : (
+                <div className="flex h-48 flex-col items-center justify-center rounded-2xl bg-gray-50 text-center">
+                  <LockIcon className="mb-2 h-10 w-10 text-gray-300" />
+                  <p className="text-sm font-medium text-gray-500">Pro 플랜 전용 기능</p>
+                  <p className="mt-0.5 text-xs text-gray-400">업그레이드하면 학습 점수 추이를 확인할 수 있습니다</p>
+                  <Link
+                    href="/pricing"
+                    className="mt-3 rounded-xl bg-primary-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-600"
+                  >
+                    Pro로 업그레이드
+                  </Link>
+                </div>
+              )}
+            </div>
+
             {/* Mastery Overview */}
             {masteries && masteries.length > 0 && (
               <div className="rounded-3xl bg-white p-6 shadow-sm">
