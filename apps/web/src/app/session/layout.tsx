@@ -1,16 +1,12 @@
-'use client';
+import type { Metadata } from 'next';
+import { SessionLayoutClient } from './session-layout-client';
 
-import { usePathname } from 'next/navigation';
-import { SidebarLayout } from '@/components/layout/sidebar-layout';
-import { ProtectedRoute } from '@/components/layout/protected-route';
+export const metadata: Metadata = {
+  title: '학습하기',
+  description:
+    'AI가 개념을 설명하고, 객관식·서술형·응용 문제를 출제·평가합니다. 체계적으로 JavaScript 개념을 학습하세요.',
+};
 
 export default function SessionLayout({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const isSessionDetail = pathname !== '/session' && pathname.startsWith('/session/');
-
-  if (isSessionDetail) {
-    return <ProtectedRoute>{children}</ProtectedRoute>;
-  }
-
-  return <SidebarLayout>{children}</SidebarLayout>;
+  return <SessionLayoutClient>{children}</SessionLayoutClient>;
 }
