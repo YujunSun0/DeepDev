@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Compass, Send, Loader2, MessageCircle, Plus,
-  ChevronLeft, ChevronDown, Sparkles, BookOpen, LogOut,
+  ChevronLeft, ChevronDown, Sparkles, BookOpen, LogOut, Menu, X,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useConcepts } from '@/hooks/use-api';
@@ -78,6 +78,12 @@ export default function ExplorePage() {
   const [localMessages, setLocalMessages] = useState<(ExplorationMessage & { isTyping?: boolean })[]>([]);
   const [turnsLeft, setTurnsLeft] = useState(20);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  useEffect(() => {
+    const onResize = () => setSidebarOpen(window.innerWidth >= 1024);
+    onResize();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
   const justCreatedRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
@@ -199,6 +205,7 @@ export default function ExplorePage() {
     setActiveExplorationId(id);
     setShowNewChat(false);
     setError('');
+    setSidebarOpen(false);
     setTyping(false);
   };
 
@@ -214,9 +221,23 @@ export default function ExplorePage() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-50/50">
-      {/* ── 사이드바 ── */}
-      <div className={`${sidebarOpen ? 'w-72' : 'w-0'} shrink-0 overflow-hidden border-r border-gray-100 bg-white transition-all duration-200`}>
+    <div className="flex h-screen min-h-[100dvh] bg-gray-50/50">
+      {/* 모바일: 사이드바 오버레이 백드롭 */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+      {/* ── 사이드바: 데스크톱 인라인, 모바일 오버레이 ── */}
+      <div
+        className={`shrink-0 overflow-hidden border-r border-gray-100 bg-white transition-all duration-200
+          fixed inset-y-0 left-0 z-50 w-72 transform lg:relative lg:inset-auto lg:z-auto
+          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+          ${sidebarOpen ? 'lg:w-72' : 'lg:w-0'}
+        `}
+      >
         <div className="flex h-full w-72 flex-col">
           {/* 사이드바 헤더 */}
           <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4">
@@ -224,13 +245,21 @@ export default function ExplorePage() {
               <Compass className="h-5 w-5 text-primary-500" />
               <h2 className="text-sm font-bold text-gray-800">탐구 모드</h2>
             </div>
-            <button
-              onClick={startNewChat}
-              className="flex items-center gap-1 rounded-xl bg-primary-50 px-3 py-1.5 text-xs font-medium text-primary-500 transition hover:bg-primary-100"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              새 대화
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={startNewChat}
+                className="flex items-center gap-1 rounded-xl bg-primary-50 px-3 py-1.5 text-xs font-medium text-primary-500 transition hover:bg-primary-100"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                새 대화
+              </button>
+              <button
+                onClick={() => setSidebarOpen(false)}
+                className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 lg:hidden"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
           </div>
 
           {/* 대화 목록 */}
@@ -274,31 +303,38 @@ export default function ExplorePage() {
       </div>
 
       {/* ── 메인 채팅 영역 ── */}
-      <div className="flex flex-1 flex-col">
+      <div className="flex min-w-0 flex-1 flex-col">
         {/* 헤더 */}
-        <div className="flex items-center gap-3 border-b border-gray-100 bg-white px-6 py-3">
+        <div className="flex min-w-0 items-center gap-2 overflow-hidden border-b border-gray-100 bg-white px-4 py-3 sm:gap-3 sm:px-6">
           <button
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+            className="shrink-0 rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
           >
-            <ChevronLeft className={`h-4 w-4 transition ${!sidebarOpen ? 'rotate-180' : ''}`} />
+            {sidebarOpen ? (
+              <ChevronLeft className="h-4 w-4" />
+            ) : (
+              <>
+                <Menu className="h-4 w-4 lg:hidden" />
+                <ChevronLeft className="hidden h-4 w-4 rotate-180 lg:block" />
+              </>
+            )}
           </button>
 
           {showNewChat ? (
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary-500" />
-              <span className="text-sm font-bold text-gray-700">새 탐구 시작</span>
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <Sparkles className="h-4 w-4 shrink-0 text-primary-500" />
+              <span className="truncate text-sm font-bold text-gray-700">새 탐구 시작</span>
             </div>
           ) : (
-            <div className="flex flex-1 items-center gap-2">
-              <BookOpen className="h-4 w-4 text-primary-500" />
-              <span className="text-sm font-bold text-gray-700">
+            <div className="flex min-w-0 flex-1 items-center gap-2">
+              <BookOpen className="h-4 w-4 shrink-0 text-primary-500" />
+              <span className="truncate text-sm font-bold text-gray-700">
                 {activeExploration?.title ?? '로딩 중...'}
               </span>
-              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] text-gray-400">
+              <span className="hidden shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] text-gray-400 sm:inline">
                 {activeExploration?.conceptName}
               </span>
-              <span className="ml-auto">
+              <span className="ml-auto shrink-0">
                 <UsageWarning compact />
               </span>
             </div>
@@ -306,10 +342,10 @@ export default function ExplorePage() {
 
           <Link
             href="/dashboard"
-            className="ml-auto flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-600 shadow-sm transition hover:bg-gray-50 hover:text-red-500 hover:border-red-200"
+            className="ml-auto flex shrink-0 items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-sm font-semibold text-gray-600 shadow-sm transition hover:bg-gray-50 hover:text-red-500 hover:border-red-200 sm:px-4 sm:py-2"
           >
             <LogOut className="h-4 w-4" />
-            나가기
+            <span className="hidden sm:inline">나가기</span>
           </Link>
         </div>
 
@@ -317,7 +353,7 @@ export default function ExplorePage() {
         <div
           ref={scrollRef}
           data-scroll-container
-          className="flex-1 overflow-y-auto px-6 py-6"
+          className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-6"
           onScroll={checkScrollPosition}
         >
           {showNewChat ? (
@@ -331,7 +367,7 @@ export default function ExplorePage() {
               {localMessages.map((msg, i) => (
                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div
-                    className={`max-w-[85%] rounded-2xl px-4 py-3 ${
+                    className={`max-w-[90%] sm:max-w-[85%] rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 ${
                       msg.role === 'user'
                         ? 'bg-primary-500 text-white'
                         : 'bg-white text-gray-700 shadow-sm border border-gray-100'
@@ -370,7 +406,7 @@ export default function ExplorePage() {
         </div>
 
         {/* 입력 영역 */}
-        <div className="relative border-t border-gray-100 bg-white px-6 py-4">
+        <div className="relative border-t border-gray-100 bg-white px-4 py-3 sm:px-6 sm:py-4">
           {!showNewChat && showScrollToBottom && (
             <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2">
               <button
@@ -457,15 +493,15 @@ function NewChatView({ concepts, selectedConceptId, onSelectConcept }: NewChatVi
   };
 
   return (
-    <div className="mx-auto max-w-4xl py-4">
-      <div className="mb-8 text-center">
-        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-3xl bg-primary-50">
-          <Compass className="h-8 w-8 text-primary-500" />
+    <div className="mx-auto max-w-4xl py-4 px-1 sm:px-0">
+      <div className="mb-6 text-center sm:mb-8">
+        <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary-50 sm:mb-4 sm:h-16 sm:w-16 sm:rounded-3xl">
+          <Compass className="h-7 w-7 text-primary-500 sm:h-8 sm:w-8" />
         </div>
-        <h1 className="text-xl font-bold text-gray-800">탐구 모드</h1>
-        <p className="mt-2 text-sm text-gray-400">
+        <h1 className="text-lg font-bold text-gray-800 sm:text-xl">탐구 모드</h1>
+        <p className="mt-2 px-2 text-xs leading-relaxed text-gray-400 sm:px-0 sm:text-sm">
           궁금한 개념을 선택하고, AI와 자유롭게 대화하며 깊이 있게 학습하세요.
-          <br />
+          <br className="hidden sm:block" />
           AI가 꼬리질문을 통해 당신의 이해도를 파악하고 학습을 도와줍니다.
         </p>
       </div>
@@ -479,7 +515,7 @@ function NewChatView({ concepts, selectedConceptId, onSelectConcept }: NewChatVi
                 <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px]">Lv.{level}</span>
                 {levelLabels[Number(level)] ?? ''}
               </h3>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {group.map((concept) => (
                   <button
                     key={concept.id}
