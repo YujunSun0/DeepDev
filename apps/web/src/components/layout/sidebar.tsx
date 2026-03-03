@@ -6,7 +6,7 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useUsage } from '@/hooks/use-api';
 import {
-  LayoutDashboard, GraduationCap, ClipboardList,
+  LayoutDashboard, GraduationCap, ClipboardList, BarChart3,
   MessageCircle, CreditCard, LogOut, ChevronLeft,
   Menu, Zap, X, Sparkles,
 } from 'lucide-react';
@@ -19,6 +19,7 @@ const NAV_SECTIONS = [
       { href: '/dashboard', label: '대시보드', icon: LayoutDashboard },
       { href: '/session', label: '학습하기', icon: GraduationCap },
       { href: '/history', label: '학습 기록', icon: ClipboardList },
+      { href: '/stats', label: '통계', icon: BarChart3 },
     ],
   },
   {

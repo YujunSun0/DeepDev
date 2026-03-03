@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect } from 'react';
+import Link from 'next/link';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function Error({
   error,
@@ -9,9 +11,13 @@ export default function Error({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const { user } = useAuth();
+
   useEffect(() => {
     console.error(error);
   }, [error]);
+
+  const homeHref = user ? '/dashboard' : '/';
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-6">
@@ -27,12 +33,12 @@ export default function Error({
         >
           다시 시도
         </button>
-        <a
-          href="/"
+        <Link
+          href={homeHref}
           className="rounded-2xl border border-gray-200 bg-white px-6 py-3 text-sm font-semibold text-gray-600 transition hover:bg-gray-50"
         >
-          홈으로
-        </a>
+          홈으로 돌아가기
+        </Link>
       </div>
     </div>
   );
