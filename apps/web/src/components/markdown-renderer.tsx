@@ -8,6 +8,8 @@ import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 interface MarkdownRendererProps {
   content: string;
   className?: string;
+  /** 타이핑 커서를 텍스트 옆에 붙이기 위해 인라인 렌더링 */
+  inline?: boolean;
 }
 
 const customStyle: Record<string, React.CSSProperties> = {
@@ -28,12 +30,19 @@ const customStyle: Record<string, React.CSSProperties> = {
   },
 };
 
-export function MarkdownRenderer({ content, className = '' }: MarkdownRendererProps) {
+export function MarkdownRenderer({ content, className = '', inline = false }: MarkdownRendererProps) {
   return (
-    <div className={`markdown-body ${className}`}>
+    <div className={`markdown-body ${inline ? 'inline' : ''} ${className}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
+        p({ children }) {
+          return (
+            <p className={inline ? 'mr-1 inline text-sm leading-relaxed text-gray-700 last:mr-0' : 'mb-3 text-sm leading-relaxed text-gray-700 last:mb-0'}>
+              {children}
+            </p>
+          );
+        },
         code({ className: codeClassName, children, ...props }) {
           const match = /language-(\w+)/.exec(codeClassName || '');
           const codeString = String(children).replace(/\n$/, '');
@@ -58,9 +67,6 @@ export function MarkdownRenderer({ content, className = '' }: MarkdownRendererPr
               {children}
             </code>
           );
-        },
-        p({ children }) {
-          return <p className="mb-3 text-sm leading-relaxed text-gray-700 last:mb-0">{children}</p>;
         },
         h1({ children }) {
           return <h1 className="mb-3 mt-4 text-lg font-bold text-gray-900 first:mt-0">{children}</h1>;

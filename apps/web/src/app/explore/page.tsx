@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Compass, Send, Loader2, MessageCircle, Plus,
-  ChevronLeft, Sparkles, BookOpen, LogOut,
+  ChevronLeft, ChevronDown, Sparkles, BookOpen, LogOut,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useConcepts } from '@/hooks/use-api';
@@ -41,7 +41,7 @@ function useTypewriter(text: string, speed = 12) {
   return { displayed, isDone };
 }
 
-function TypewriterBubble({ content, onDone }: { content: string; onDone: () => void }) {
+function TypewriterBubble({ content, onDone, onDisplayChange }: { content: string; onDone: () => void; onDisplayChange?: () => void }) {
   const { displayed, isDone } = useTypewriter(content);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -50,13 +50,12 @@ function TypewriterBubble({ content, onDone }: { content: string; onDone: () => 
   }, [isDone, onDone]);
 
   useEffect(() => {
-    const parent = ref.current?.closest('[data-scroll-container]');
-    if (parent) parent.scrollTop = parent.scrollHeight;
-  }, [displayed]);
+    onDisplayChange?.();
+  }, [displayed, onDisplayChange]);
 
   return (
-    <div ref={ref}>
-      <MarkdownRenderer content={displayed} />
+    <div ref={ref} className="inline">
+      <MarkdownRenderer content={displayed} inline />
       {!isDone && <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-primary-400" />}
     </div>
   );
@@ -81,6 +80,7 @@ export default function ExplorePage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const justCreatedRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
 
   const { data: concepts } = useConcepts();
   const { data: explorations, isLoading: loadingList } = useQuery({
@@ -109,8 +109,22 @@ export default function ExplorePage() {
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      setShowScrollToBottom(false);
     }
   }, [localMessages, loading]);
+
+  const checkScrollPosition = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const threshold = 80;
+    const isAtBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+    setShowScrollToBottom(!isAtBottom);
+  }, []);
+
+  const scrollToBottom = useCallback(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+    setShowScrollToBottom(false);
+  }, []);
 
   const handleTypingDone = useCallback(() => {
     setTyping(false);
@@ -139,6 +153,7 @@ export default function ExplorePage() {
         { role: 'assistant', content: result.messages[1]?.content ?? '', isTyping: true },
       ]);
       queryClient.invalidateQueries({ queryKey: ['explorations'] });
+      queryClient.invalidateQueries({ queryKey: ['usage'] });
     } catch (e: any) {
       const msg = e?.response?.data?.message ?? '탐구 시작에 실패했습니다';
       setError(typeof msg === 'string' ? msg : JSON.stringify(msg));
@@ -163,6 +178,7 @@ export default function ExplorePage() {
         ...prev,
         { role: 'assistant', content: result.reply, isTyping: true },
       ]);
+      queryClient.invalidateQueries({ queryKey: ['usage'] });
     } catch (e: any) {
       const msg = e?.response?.data?.message ?? 'AI 응답에 실패했습니다';
       setError(typeof msg === 'string' ? msg : JSON.stringify(msg));
@@ -298,7 +314,12 @@ export default function ExplorePage() {
         </div>
 
         {/* 메시지 영역 */}
-        <div ref={scrollRef} data-scroll-container className="flex-1 overflow-y-auto px-6 py-6">
+        <div
+          ref={scrollRef}
+          data-scroll-container
+          className="flex-1 overflow-y-auto px-6 py-6"
+          onScroll={checkScrollPosition}
+        >
           {showNewChat ? (
             <NewChatView
               concepts={concepts ?? []}
@@ -318,7 +339,7 @@ export default function ExplorePage() {
                   >
                     {msg.role === 'assistant' ? (
                       msg.isTyping ? (
-                        <TypewriterBubble content={msg.content} onDone={handleTypingDone} />
+                        <TypewriterBubble content={msg.content} onDone={handleTypingDone} onDisplayChange={checkScrollPosition} />
                       ) : (
                         <MarkdownRenderer content={msg.content} />
                       )
@@ -349,8 +370,27 @@ export default function ExplorePage() {
         </div>
 
         {/* 입력 영역 */}
-        <div className="border-t border-gray-100 bg-white px-6 py-4">
-          <div className="mx-auto max-w-4xl">
+        <div className="relative border-t border-gray-100 bg-white px-6 py-4">
+          {!showNewChat && showScrollToBottom && (
+            <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2">
+              <button
+                onClick={scrollToBottom}
+                className="flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-md ring-1 ring-gray-200 transition hover:bg-gray-50 hover:shadow-lg"
+                title="최하단으로"
+              >
+                <ChevronDown className="h-4 w-4 text-gray-600" />
+              </button>
+            </div>
+          )}
+          <div className="mx-auto max-w-4xl space-y-3">
+            {!showNewChat && turnsLeft > 0 && turnsLeft <= 2 && (
+              <div className="rounded-xl bg-amber-50 px-4 py-3 text-center">
+                <p className="text-sm font-semibold text-amber-800">대화 횟수가 곧 소진됩니다</p>
+                <p className="mt-0.5 text-xs text-amber-700">
+                  남은 횟수 {turnsLeft}회. 필요한 내용을 요약해서 전달해주세요.
+                </p>
+              </div>
+            )}
             {showNewChat && !selectedConceptId ? (
               <p className="text-center text-sm text-gray-400">위에서 탐구할 개념을 먼저 선택해주세요</p>
             ) : turnsLeft <= 0 && !showNewChat ? (
@@ -389,6 +429,7 @@ export default function ExplorePage() {
     </div>
   );
 }
+
 
 /* ═══════════════════════════════════════════════════
    새 대화 시작 뷰 (개념 선택)
