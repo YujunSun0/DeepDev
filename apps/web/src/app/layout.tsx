@@ -32,11 +32,13 @@ export const metadata: Metadata = {
     title: 'DeepDev - AI 기반 개발자 숙련도 측정 플랫폼',
     description:
       '개념 그래프 기반으로 개발 기술 숙련도를 정량화. AI 학습 세션과 탐구 모드로 체계적으로 실력을 측정하세요.',
+    images: [{ url: '/og-image.png', width: 1200, height: 630, alt: 'DeepDev' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'DeepDev - AI 기반 개발자 숙련도 측정 플랫폼',
     description: '개념 그래프 기반으로 개발 기술 숙련도를 정량화. AI 학습 세션과 탐구 모드로 체계적으로 실력을 측정하세요.',
+    images: ['/og-image.png'],
   },
   robots: {
     index: true,

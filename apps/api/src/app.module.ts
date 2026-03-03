@@ -8,6 +8,7 @@ import { MasteryModule } from './modules/mastery/mastery.module';
 import { ExplorationsModule } from './modules/explorations/explorations.module';
 import { UsageModule } from './modules/usage/usage.module';
 import { BillingModule } from './modules/billing/billing.module';
+import { HealthModule } from './modules/health/health.module';
 import { LlmModule } from './llm/llm.module';
 import { PrismaModule } from './prisma/prisma.module';
 
@@ -27,6 +28,7 @@ import { PrismaModule } from './prisma/prisma.module';
     ExplorationsModule,
     UsageModule,
     BillingModule,
+    HealthModule,
     LlmModule,
   ],
 })
