@@ -75,6 +75,7 @@ export default function ExplorePage() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [typing, setTyping] = useState(false);
+  const [pendingRequestExplorationId, setPendingRequestExplorationId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [localMessages, setLocalMessages] = useState<(ExplorationMessage & { isTyping?: boolean })[]>([]);
   const [turnsLeft, setTurnsLeft] = useState(20);
@@ -88,6 +89,12 @@ export default function ExplorePage() {
   const justCreatedRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const activeExplorationIdRef = useRef<string | null>(activeExplorationId);
+  const pendingUserMessageRef = useRef<string | null>(null);
+  const backgroundResponseExplorationIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    activeExplorationIdRef.current = activeExplorationId;
+  }, [activeExplorationId]);
 
   const { data: concepts } = useConcepts();
   const { data: explorations, isLoading: loadingList } = useQuery({
@@ -108,17 +115,29 @@ export default function ExplorePage() {
         setTurnsLeft(activeExploration.turnsLeft);
         return;
       }
-      setLocalMessages(activeExploration.messages.map((m) => ({ ...m, isTyping: false })));
+      let messages = activeExploration.messages.map((m) => ({ ...m, isTyping: false }));
+      if (pendingRequestExplorationId === activeExploration.id && pendingUserMessageRef.current) {
+        messages = [...messages, { role: 'user', content: pendingUserMessageRef.current, isTyping: false }];
+      }
+      const needsTypewriter = backgroundResponseExplorationIdRef.current === activeExploration.id;
+      if (needsTypewriter && messages.length > 0) {
+        const lastIdx = messages.length - 1;
+        if (messages[lastIdx].role === 'assistant') {
+          messages = messages.map((m, i) => (i === lastIdx ? { ...m, isTyping: true } : m));
+          backgroundResponseExplorationIdRef.current = null;
+        }
+      }
+      setLocalMessages(messages);
       setTurnsLeft(activeExploration.turnsLeft);
     }
-  }, [activeExploration]);
+  }, [activeExploration, pendingRequestExplorationId]);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
       setShowScrollToBottom(false);
     }
-  }, [localMessages, loading]);
+  }, [localMessages, loading, pendingRequestExplorationId, activeExplorationId]);
 
   const checkScrollPosition = useCallback(() => {
     const el = scrollRef.current;
@@ -151,6 +170,7 @@ export default function ExplorePage() {
 
     try {
       const result = await explorationApi.create(selectedConceptId, message);
+      if (activeExplorationIdRef.current !== null) return;
       justCreatedRef.current = true;
       setActiveExplorationId(result.id);
       setLoading(false);
@@ -162,6 +182,7 @@ export default function ExplorePage() {
       queryClient.invalidateQueries({ queryKey: ['explorations'] });
       queryClient.invalidateQueries({ queryKey: ['usage'] });
     } catch (e: unknown) {
+      if (activeExplorationIdRef.current !== null) return;
       setError(getApiErrorMessage(e));
       setLoading(false);
     }
@@ -170,13 +191,40 @@ export default function ExplorePage() {
   const handleSendMessage = async () => {
     if (!activeExplorationId || !input.trim() || loading || typing || turnsLeft <= 0) return;
     const message = input.trim();
+    const requestForId = activeExplorationId;
     setInput('');
     setLoading(true);
     setError('');
+    setPendingRequestExplorationId(requestForId);
+    pendingUserMessageRef.current = message;
     setLocalMessages((prev) => [...prev, { role: 'user', content: message, isTyping: false }]);
 
     try {
-      const result = await explorationApi.sendMessage(activeExplorationId, message);
+      const result = await explorationApi.sendMessage(requestForId, message);
+      const userSwitched = activeExplorationIdRef.current !== requestForId;
+      setPendingRequestExplorationId(null);
+      pendingUserMessageRef.current = null;
+      if (userSwitched) {
+        backgroundResponseExplorationIdRef.current = requestForId;
+        queryClient.setQueryData<ExplorationDetail>(
+          ['explorations', requestForId],
+          (old) => {
+            if (!old) return old;
+            return {
+              ...old,
+              messages: [
+                ...old.messages,
+                { role: 'user', content: message },
+                { role: 'assistant', content: result.reply },
+              ],
+              turnsLeft: result.turnsLeft,
+            };
+          },
+        );
+        queryClient.invalidateQueries({ queryKey: ['explorations'] });
+        queryClient.invalidateQueries({ queryKey: ['usage'] });
+        return;
+      }
       setLoading(false);
       setTyping(true);
       setTurnsLeft(result.turnsLeft);
@@ -186,6 +234,9 @@ export default function ExplorePage() {
       ]);
       queryClient.invalidateQueries({ queryKey: ['usage'] });
     } catch (e: unknown) {
+      setPendingRequestExplorationId(null);
+      pendingUserMessageRef.current = null;
+      if (activeExplorationIdRef.current !== requestForId) return;
       setError(getApiErrorMessage(e));
       setLoading(false);
     }
@@ -204,8 +255,9 @@ export default function ExplorePage() {
     setActiveExplorationId(id);
     setShowNewChat(false);
     setError('');
-    setSidebarOpen(false);
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) setSidebarOpen(false);
     setTyping(false);
+    setLoading(false);
   };
 
   const startNewChat = () => {
@@ -286,7 +338,12 @@ export default function ExplorePage() {
                     : 'text-gray-600 hover:bg-gray-50'
                 }`}
               >
-                <p className="truncate text-sm font-medium">{exp.title}</p>
+                <div className="flex items-center gap-2">
+                  <p className="min-w-0 flex-1 truncate text-sm font-medium">{exp.title}</p>
+                  {pendingRequestExplorationId === exp.id && (
+                    <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-primary-500" />
+                  )}
+                </div>
                 <div className="mt-0.5 flex items-center gap-2">
                   <span className="text-[10px] text-gray-400">{exp.conceptName}</span>
                   <span className="text-[10px] text-gray-300">·</span>
@@ -385,7 +442,7 @@ export default function ExplorePage() {
                 </div>
               ))}
 
-              {loading && (
+              {(loading || pendingRequestExplorationId === activeExplorationId) && (
                 <div className="flex justify-start">
                   <div className="flex items-center gap-1.5 rounded-2xl bg-white px-4 py-3 shadow-sm border border-gray-100">
                     <span className="h-2 w-2 animate-bounce rounded-full bg-gray-300" style={{ animationDelay: '0ms' }} />
