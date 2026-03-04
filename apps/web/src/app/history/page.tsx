@@ -10,6 +10,7 @@ import {
 import { useSessions } from '@/hooks/use-api';
 import { api } from '@/lib/api';
 import { MarkdownRenderer } from '@/components/markdown-renderer';
+import { HistorySkeleton } from '@/components/skeletons';
 
 function ScoreBadge({ score }: { score: number | null }) {
   if (score === null || score === undefined) return null;
@@ -321,9 +322,7 @@ export default function HistoryPage() {
 
         {/* 목록 */}
         {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-6 w-6 animate-spin text-gray-300" />
-          </div>
+          <HistorySkeleton />
         ) : items.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20">
             <Clock className="mb-3 h-12 w-12 text-gray-200" />

@@ -6,6 +6,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { DomainTabs } from '@/components/domain-tabs';
 import { UsageWarning } from '@/components/usage-warning';
 import { api } from '@/lib/api';
+import { SessionSkeleton } from '@/components/skeletons';
 import { useRouter } from 'next/navigation';
 
 const PLAN_MAX_LEVEL: Record<string, number> = {
@@ -64,11 +65,7 @@ export default function SessionPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary-400 border-t-transparent" />
-      </div>
-    );
+    return <SessionSkeleton />;
   }
 
   return (

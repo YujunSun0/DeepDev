@@ -13,7 +13,8 @@ import { useGSI, useConceptTree, useWeakConcepts, useSessions, useMasteries } fr
 import { useAuth } from '@/hooks/use-auth';
 import { DomainTabs } from '@/components/domain-tabs';
 import { UsageWarning } from '@/components/usage-warning';
-import { GrowthChart } from '@/components/growth-chart';
+import { GrowthChart } from '@/components/charts';
+import { DashboardSkeleton } from '@/components/skeletons';
 
 /* ───── helpers ───── */
 
@@ -97,13 +98,15 @@ const levelMeta: Record<number, { label: string; color: string; bg: string }> = 
 
 export default function DashboardPage() {
   const [activeDomain, setActiveDomain] = useState('javascript');
-  const { data: gsi, isLoading: gsiLoading } = useGSI();
-  const { data: concepts } = useConceptTree();
+  const { data: gsi, isPending: gsiLoading } = useGSI();
+  const { data: concepts, isPending: conceptsLoading } = useConceptTree();
   const { data: weakConcepts } = useWeakConcepts();
   const { user } = useAuth();
-  const { data: sessionsData } = useSessions();
+  const { data: sessionsData, isPending: sessionsLoading } = useSessions();
   const { data: closedSessionsData } = useSessions({ state: 'CLOSED', limit: 100 });
-  const { data: masteries } = useMasteries();
+  const { data: masteries, isPending: masteriesLoading } = useMasteries();
+
+  const isDashboardLoading = gsiLoading || conceptsLoading || sessionsLoading || masteriesLoading;
 
   const isPro = user?.planType === 'PRO' || user?.planType === 'MASTER';
 
@@ -129,6 +132,10 @@ export default function DashboardPage() {
   const progressPercent = concepts && concepts.length > 0
     ? Math.round(((masteries?.length ?? 0) / concepts.length) * 100)
     : 0;
+
+  if (isDashboardLoading) {
+    return <DashboardSkeleton />;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 px-6 py-8">

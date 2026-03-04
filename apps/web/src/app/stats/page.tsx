@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useSessions } from '@/hooks/use-api';
+import { StatsSkeleton } from '@/components/skeletons';
 
 const PERIOD_OPTIONS = [
   { value: 7, label: '7일' },
@@ -185,7 +186,7 @@ function aggregateByConcept(sessions: Session[]): { name: string; value: number 
 
 export default function StatsPage() {
   const { user } = useAuth();
-  const { data: sessionsData } = useSessions({ state: 'CLOSED', limit: 200 });
+  const { data: sessionsData, isPending: sessionsLoading } = useSessions({ state: 'CLOSED', limit: 200 });
   const [period, setPeriod] = useState<7 | 30 | 90>(30);
 
   const isPro = user?.planType === 'PRO' || user?.planType === 'MASTER';
@@ -201,6 +202,10 @@ export default function StatsPage() {
   const weekdayData = useMemo(() => aggregateByWeekday(filtered), [filtered]);
   const levelData = useMemo(() => aggregateByLevel(filtered), [filtered]);
   const scoreGradeData = useMemo(() => aggregateByScoreGrade(filtered), [filtered]);
+
+  if (isPro && sessionsLoading) {
+    return <StatsSkeleton />;
+  }
 
   if (!isPro) {
     return (
