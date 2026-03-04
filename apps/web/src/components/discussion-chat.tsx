@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { MessageCircle, Send, Loader2, ChevronUp } from 'lucide-react';
 import { sessionApi } from '@/lib/session-api';
+import { getApiErrorMessage } from '@/lib/api-error';
 import { MarkdownRenderer } from './markdown-renderer';
 
 interface Message {
@@ -121,9 +122,8 @@ export function DiscussionChat({
       setTyping(true);
       setMessages(prev => [...prev, { role: 'assistant', content: result.reply, isTyping: true }]);
       setRemainingTurns(result.remainingTurns);
-    } catch (e: any) {
-      const msg = e?.response?.data?.message ?? 'AI 응답에 실패했습니다';
-      setError(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    } catch (e: unknown) {
+      setError(getApiErrorMessage(e));
       setLoading(false);
     }
   };

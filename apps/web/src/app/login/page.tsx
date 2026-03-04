@@ -4,6 +4,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
+import { getApiErrorMessage } from '@/lib/api-error';
+import { ErrorMessage } from '@/components/ui';
 
 export default function LoginPage() {
   const { login, register } = useAuth();
@@ -26,11 +28,7 @@ export default function LoginPage() {
         await register(email, password, name || undefined);
       }
     } catch (err: unknown) {
-      const message =
-        err && typeof err === 'object' && 'response' in err
-          ? (err as { response: { data: { message: string } } }).response?.data?.message
-          : '오류가 발생했습니다';
-      setError(typeof message === 'string' ? message : '오류가 발생했습니다');
+      setError(getApiErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -76,9 +74,7 @@ export default function LoginPage() {
           </p>
 
           {error && (
-            <div className="mb-5 rounded-2xl bg-red-50 px-4 py-3.5 text-sm text-red-600">
-              {error}
-            </div>
+            <ErrorMessage message={error} onDismiss={() => setError('')} className="mb-5" />
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">

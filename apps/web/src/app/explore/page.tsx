@@ -10,6 +10,7 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useConcepts } from '@/hooks/use-api';
 import { explorationApi, type ExplorationMessage, type ExplorationDetail } from '@/lib/exploration-api';
+import { getApiErrorMessage } from '@/lib/api-error';
 import { MarkdownRenderer } from '@/components/markdown-renderer';
 import { UsageWarning } from '@/components/usage-warning';
 
@@ -160,9 +161,8 @@ export default function ExplorePage() {
       ]);
       queryClient.invalidateQueries({ queryKey: ['explorations'] });
       queryClient.invalidateQueries({ queryKey: ['usage'] });
-    } catch (e: any) {
-      const msg = e?.response?.data?.message ?? '탐구 시작에 실패했습니다';
-      setError(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    } catch (e: unknown) {
+      setError(getApiErrorMessage(e));
       setLoading(false);
     }
   };
@@ -185,9 +185,8 @@ export default function ExplorePage() {
         { role: 'assistant', content: result.reply, isTyping: true },
       ]);
       queryClient.invalidateQueries({ queryKey: ['usage'] });
-    } catch (e: any) {
-      const msg = e?.response?.data?.message ?? 'AI 응답에 실패했습니다';
-      setError(typeof msg === 'string' ? msg : JSON.stringify(msg));
+    } catch (e: unknown) {
+      setError(getApiErrorMessage(e));
       setLoading(false);
     }
   };

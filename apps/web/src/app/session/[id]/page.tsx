@@ -9,6 +9,8 @@ import {
   ArrowRight, RotateCcw, Home, Send, Lightbulb, Code,
 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { getApiErrorMessage } from '@/lib/api-error';
+import { ErrorMessage } from '@/components/ui';
 import { MarkdownRenderer } from '@/components/markdown-renderer';
 import { CodeEditor } from '@/components/code-editor';
 import { DiscussionChat } from '@/components/discussion-chat';
@@ -217,8 +219,8 @@ export default function SessionPlayPage() {
         default:
           handleStart(data.id);
       }
-    }).catch(() => {
-      setError('세션을 불러올 수 없습니다');
+    }).catch((e: unknown) => {
+      setError(getApiErrorMessage(e));
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
@@ -232,12 +234,14 @@ export default function SessionPlayPage() {
       const result = await sessionApi.startSession(sessionId);
       setExplanation(result.explanation);
       setStep('explain');
-    } catch (e: any) {
-      const msg = e?.response?.data?.message;
-      if (typeof msg === 'string' && msg.includes('already started')) {
+    } catch (e: unknown) {
+      const rawMsg = e && typeof e === 'object' && 'response' in e
+        ? (e as { response?: { data?: { message?: string } } }).response?.data?.message
+        : '';
+      if (typeof rawMsg === 'string' && rawMsg.includes('already started')) {
         setStep('explain');
       } else {
-        setError(msg ?? 'AI 호출에 실패했습니다. 잠시 후 다시 시도해주세요.');
+        setError(getApiErrorMessage(e));
       }
     } finally {
       setLoading(false);
@@ -252,8 +256,8 @@ export default function SessionPlayPage() {
       setObjectiveQ(result);
       setSelectedOption('');
       setStep('objective');
-    } catch (e: any) {
-      setError(e?.response?.data?.message ?? 'AI 호출 실패');
+    } catch (e: unknown) {
+      setError(getApiErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -267,8 +271,8 @@ export default function SessionPlayPage() {
       const result = await sessionApi.submitObjectiveAnswer(id, selectedOption);
       setObjectiveResult(result);
       setStep('objective-result');
-    } catch (e: any) {
-      setError(e?.response?.data?.message ?? '답변 제출 실패');
+    } catch (e: unknown) {
+      setError(getApiErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -282,8 +286,8 @@ export default function SessionPlayPage() {
       setSubjectiveQ(result.question);
       setSubjectiveAnswer('');
       setStep('subjective');
-    } catch (e: any) {
-      setError(e?.response?.data?.message ?? 'AI 호출 실패');
+    } catch (e: unknown) {
+      setError(getApiErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -297,8 +301,8 @@ export default function SessionPlayPage() {
       const result = await sessionApi.submitSubjectiveAnswer(id, subjectiveAnswer);
       setSubjectiveResult(result);
       setStep('subjective-result');
-    } catch (e: any) {
-      setError(e?.response?.data?.message ?? '답변 제출 실패');
+    } catch (e: unknown) {
+      setError(getApiErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -312,8 +316,8 @@ export default function SessionPlayPage() {
       setApplicationQ(result.question);
       setApplicationAnswer('');
       setStep('application');
-    } catch (e: any) {
-      setError(e?.response?.data?.message ?? 'AI 호출 실패');
+    } catch (e: unknown) {
+      setError(getApiErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -327,8 +331,8 @@ export default function SessionPlayPage() {
       const result = await sessionApi.submitApplicationAnswer(id, applicationAnswer);
       setApplicationResult(result);
       setStep('application-result');
-    } catch (e: any) {
-      setError(e?.response?.data?.message ?? '답변 제출 실패');
+    } catch (e: unknown) {
+      setError(getApiErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -341,8 +345,8 @@ export default function SessionPlayPage() {
       const result = await sessionApi.getSummary(id);
       setSummaryData(result);
       setStep('summary');
-    } catch (e: any) {
-      setError(e?.response?.data?.message ?? '요약 생성 실패');
+    } catch (e: unknown) {
+      setError(getApiErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -434,7 +438,7 @@ export default function SessionPlayPage() {
 
         {/* ── Error ── */}
         {error && (
-          <div className="mb-6 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-600">{error}</div>
+          <ErrorMessage message={error} onDismiss={() => setError('')} className="mb-6" />
         )}
 
         {/* ── Loading ── */}
@@ -672,8 +676,8 @@ export default function SessionPlayPage() {
                   try {
                     const result = await sessionApi.reEvaluate(id, 'subjective');
                     setSubjectiveResult(result as any);
-                  } catch (e: any) {
-                    setError(e?.response?.data?.message ?? '재채점 실패');
+                  } catch (e: unknown) {
+                    setError(getApiErrorMessage(e));
                   } finally {
                     setLoading(false);
                   }
@@ -783,8 +787,8 @@ export default function SessionPlayPage() {
                   try {
                     const result = await sessionApi.reEvaluate(id, 'application');
                     setApplicationResult(result as any);
-                  } catch (e: any) {
-                    setError(e?.response?.data?.message ?? '재채점 실패');
+                  } catch (e: unknown) {
+                    setError(getApiErrorMessage(e));
                   } finally {
                     setLoading(false);
                   }

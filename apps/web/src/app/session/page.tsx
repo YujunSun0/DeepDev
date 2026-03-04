@@ -6,6 +6,8 @@ import { useAuth } from '@/hooks/use-auth';
 import { DomainTabs } from '@/components/domain-tabs';
 import { UsageWarning } from '@/components/usage-warning';
 import { api } from '@/lib/api';
+import { getApiErrorMessage } from '@/lib/api-error';
+import { ErrorMessage } from '@/components/ui';
 import { SessionSkeleton } from '@/components/skeletons';
 import { useRouter } from 'next/navigation';
 
@@ -54,11 +56,7 @@ export default function SessionPage() {
       const { data } = await api.post('/sessions', { conceptId, level });
       router.push(`/session/${data.id}`);
     } catch (err: unknown) {
-      const message =
-        err && typeof err === 'object' && 'response' in err
-          ? (err as { response: { data: { message: string } } }).response?.data?.message
-          : '세션 생성에 실패했습니다';
-      setError(typeof message === 'string' ? message : '세션 생성에 실패했습니다');
+      setError(getApiErrorMessage(err));
     } finally {
       setCreating(null);
     }
@@ -84,7 +82,7 @@ export default function SessionPage() {
         </div>
 
         {error && (
-          <div className="mb-6 rounded-2xl bg-red-50 px-4 py-3.5 text-sm text-red-600">{error}</div>
+          <ErrorMessage message={error} onDismiss={() => setError('')} className="mb-6" />
         )}
 
         {activeDomain === 'javascript' ? (

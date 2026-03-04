@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { Zap, Crown, Lock, Loader2, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { api } from '@/lib/api';
+import { getApiErrorMessage } from '@/lib/api-error';
+import { ErrorMessage } from '@/components/ui';
 
 export default function PricingPage() {
   const { user, refreshUser } = useAuth();
@@ -24,8 +26,8 @@ export default function PricingPage() {
         window.removeEventListener('focus', onFocus);
       };
       window.addEventListener('focus', onFocus);
-    } catch (e: any) {
-      setError(e?.response?.data?.message ?? '체크아웃 생성에 실패했습니다');
+    } catch (e: unknown) {
+      setError(getApiErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -36,8 +38,8 @@ export default function PricingPage() {
     try {
       const { data } = await api.get<{ portalUrl: string }>('/billing/portal');
       window.open(data.portalUrl, '_blank');
-    } catch (e: any) {
-      setError(e?.response?.data?.message ?? '포털 접근에 실패했습니다');
+    } catch (e: unknown) {
+      setError(getApiErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -119,8 +121,8 @@ export default function PricingPage() {
         </div>
 
         {error && (
-          <div className="mx-auto mb-8 max-w-md rounded-2xl bg-red-50 px-4 py-3 text-center text-sm text-red-500">
-            {error}
+          <div className="mx-auto mb-8 max-w-md">
+            <ErrorMessage message={error} onDismiss={() => setError('')} />
           </div>
         )}
 
