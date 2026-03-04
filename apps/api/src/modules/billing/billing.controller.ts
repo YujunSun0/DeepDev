@@ -8,6 +8,7 @@ import {
   RawBodyRequest,
   Logger,
 } from '@nestjs/common';
+import { SkipThrottle } from '@nestjs/throttler';
 import { Request } from 'express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import { CurrentUser, CurrentUserPayload } from '../../common/decorators/current-user.decorator';
@@ -26,6 +27,7 @@ export class BillingController {
   }
 
   @Post('webhook')
+  @SkipThrottle()
   async handleWebhook(
     @Req() req: RawBodyRequest<Request>,
     @Headers('x-signature') signature: string,

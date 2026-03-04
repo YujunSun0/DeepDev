@@ -39,3 +39,24 @@
 - **Web**: `NEXT_PUBLIC_SENTRY_DSN` — 브라우저 에러, React 렌더 오류 수집  
   - DSN 미설정 시 비활성화
 - **Source maps** (선택): CI에 `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` 설정 시 소스맵 업로드
+
+### 6. 가용성 모니터링 (Uptime)
+
+- UptimeRobot, Pingdom 등에서 `GET /api/health` 주기 호출 (예: 5분)
+- Web: `https://your-web.vercel.app` / API: `https://your-api.../api/health` 모니터 등록
+- 다운 시 이메일/Slack 알림
+
+### 7. Rate Limiting
+
+- `THROTTLE_TTL`, `THROTTLE_LIMIT` — 기본 분당 100회
+- Lemon Squeezy webhook은 제한 제외
+
+### 8. 보안 헤더 (Helmet)
+
+- XSS, clickjacking 등 기본 보안 헤더 자동 적용
+
+### 9. DB 백업
+
+- **Railway**: DB 서비스 → Backups 탭에서 자동 백업 설정
+- **Neon**: 대시보드 Backups 메뉴 확인
+- **기타**: pg_dump + 스토리지 업로드 스크립트 (GitHub Actions 등)
