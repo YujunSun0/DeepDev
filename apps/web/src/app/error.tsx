@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
+import { logger } from '@/lib/logger';
 
 export default function Error({
   error,
@@ -14,7 +15,7 @@ export default function Error({
   const { user } = useAuth();
 
   useEffect(() => {
-    console.error(error);
+    logger.error('Unhandled error', error);
   }, [error]);
 
   const homeHref = user ? '/dashboard' : '/';

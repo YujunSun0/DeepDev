@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { logger } from './logger';
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
@@ -24,6 +25,12 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && typeof window !== 'undefined') {
       localStorage.removeItem('deepdev_token');
       window.location.href = '/login';
+    }
+    if (error.response?.status && error.response.status >= 500) {
+      logger.error(`API ${error.config?.method ?? '?'} ${error.config?.url ?? '?'} failed`, {
+        status: error.response.status,
+        message: error.response?.data?.message,
+      });
     }
     return Promise.reject(error);
   },

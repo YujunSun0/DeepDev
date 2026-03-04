@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 
@@ -32,6 +32,6 @@ async function bootstrap() {
 
   const port = process.env.PORT || process.env.API_PORT || 4000;
   await app.listen(port, '0.0.0.0');
-  console.log(`DeepDev API running on port ${port}`);
+  new Logger('Bootstrap').log(`DeepDev API running on port ${port}`);
 }
 bootstrap();

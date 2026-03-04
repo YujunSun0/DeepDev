@@ -6,6 +6,7 @@ import {
   Headers,
   UseGuards,
   RawBodyRequest,
+  Logger,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -14,6 +15,8 @@ import { BillingService } from './billing.service';
 
 @Controller('billing')
 export class BillingController {
+  private readonly logger = new Logger(BillingController.name);
+
   constructor(private readonly billingService: BillingService) {}
 
   @Post('checkout')
@@ -34,7 +37,7 @@ export class BillingController {
     try {
       return await this.billingService.handleWebhook(rawBody, signature ?? '');
     } catch (e) {
-      console.error('Webhook error:', e);
+      this.logger.error('Webhook error', e);
       throw e;
     }
   }
