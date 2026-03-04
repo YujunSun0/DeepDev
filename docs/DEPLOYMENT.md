@@ -32,3 +32,10 @@
 ### 4. OG 이미지 (SNS 공유)
 
 - `public/og-image.png` (1200×630) 사용
+
+### 5. 모니터링 (Sentry)
+
+- **API**: `SENTRY_DSN` — 5xx 에러 자동 수집
+- **Web**: `NEXT_PUBLIC_SENTRY_DSN` — 브라우저 에러, React 렌더 오류 수집  
+  - DSN 미설정 시 비활성화
+- **Source maps** (선택): CI에 `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` 설정 시 소스맵 업로드

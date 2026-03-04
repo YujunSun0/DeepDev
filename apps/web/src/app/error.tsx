@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import * as Sentry from '@sentry/nextjs';
 import Link from 'next/link';
 import { useAuth } from '@/hooks/use-auth';
 import { logger } from '@/lib/logger';
@@ -15,6 +16,7 @@ export default function Error({
   const { user } = useAuth();
 
   useEffect(() => {
+    Sentry.captureException(error);
     logger.error('Unhandled error', error);
   }, [error]);
 

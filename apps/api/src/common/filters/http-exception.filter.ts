@@ -7,6 +7,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { Request, Response } from 'express';
+import * as Sentry from '@sentry/node';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -35,6 +36,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
       status = HttpStatus.INTERNAL_SERVER_ERROR;
       message = '서버 오류가 발생했습니다';
       this.logger.error('Unhandled exception', exception);
+    }
+
+    if (status >= 500 && process.env.SENTRY_DSN) {
+      Sentry.captureException(exception, {
+        extra: { path: request.url, method: request.method, status },
+      });
     }
 
     response.status(status).json({
