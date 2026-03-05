@@ -1,20 +1,31 @@
 // apps/web/src/app/login/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { ErrorMessage } from '@/components/ui';
 
 export default function LoginPage() {
+  const searchParams = useSearchParams();
   const { login, register } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const registered = searchParams.get('registered');
+    if (registered) {
+      setSuccess(decodeURIComponent(registered));
+      setIsLogin(true);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,6 +87,11 @@ export default function LoginPage() {
           {error && (
             <ErrorMessage message={error} onDismiss={() => setError('')} className="mb-5" />
           )}
+          {success && (
+            <div className="mb-5 rounded-2xl bg-green-50 px-4 py-3 text-sm text-green-700">
+              {success}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
@@ -131,7 +147,7 @@ export default function LoginPage() {
 
           <div className="mt-6 text-center">
             <button
-              onClick={() => { setIsLogin(!isLogin); setError(''); }}
+              onClick={() => { setIsLogin(!isLogin); setError(''); setSuccess(''); }}
               className="text-sm text-gray-400 transition hover:text-primary-500"
             >
               {isLogin ? '계정이 없으신가요? ' : '이미 계정이 있으신가요? '}

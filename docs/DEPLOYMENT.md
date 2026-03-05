@@ -13,6 +13,8 @@
 ### 1. 환경 변수 (필수)
 
 - `JWT_SECRET`: 32자 이상 강력한 랜덤 문자열
+- `RESEND_API_KEY`: 이메일 인증용 (resend.com 무료 3,000통/월)
+- `SITE_URL`: 웹 URL (인증 링크용, 예: https://deepdev-web.vercel.app)
 - `DATABASE_URL`: 프로덕션 DB 연결 문자열
 - `CORS_ORIGIN`: 웹 도메인 (쉼표로 복수 허용)
 - `NEXT_PUBLIC_SITE_URL`: 실제 사이트 URL

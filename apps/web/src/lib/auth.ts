@@ -12,6 +12,13 @@ interface AuthResponse {
   user: AuthUser;
 }
 
+interface RegisterResponse {
+  accessToken?: string;
+  user?: AuthUser;
+  message?: string;
+  requiresVerification?: boolean;
+}
+
 const TOKEN_KEY = 'deepdev_token';
 const USER_KEY = 'deepdev_user';
 
@@ -25,9 +32,15 @@ export async function register(
   email: string,
   password: string,
   name?: string,
-): Promise<AuthResponse> {
-  const { data } = await api.post<AuthResponse>('/auth/register', { email, password, name });
-  saveAuth(data);
+): Promise<AuthResponse | RegisterResponse> {
+  const { data } = await api.post<RegisterResponse>('/auth/register', {
+    email,
+    password,
+    name,
+  });
+  if (data.accessToken && data.user) {
+    saveAuth(data as AuthResponse);
+  }
   return data;
 }
 
@@ -66,4 +79,19 @@ export async function refreshUser(): Promise<AuthUser | null> {
 
 export function isAuthenticated(): boolean {
   return !!getToken();
+}
+
+export interface VerifyEmailResponse {
+  success: boolean;
+  message: string;
+  accessToken?: string;
+  user?: AuthUser;
+}
+
+export async function verifyEmailAndLogin(token: string): Promise<VerifyEmailResponse> {
+  const { data } = await api.get<VerifyEmailResponse>(`/auth/verify-email?token=${encodeURIComponent(token)}`);
+  if (data.accessToken && data.user) {
+    saveAuth({ accessToken: data.accessToken, user: data.user });
+  }
+  return data;
 }

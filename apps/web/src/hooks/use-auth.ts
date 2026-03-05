@@ -54,8 +54,14 @@ export function useAuthProvider(): AuthContextValue {
 
   const register = useCallback(async (email: string, password: string, name?: string) => {
     const res = await authLib.register(email, password, name);
-    setUser(res.user);
-    router.push('/dashboard');
+    if ('requiresVerification' in res && res.requiresVerification) {
+      router.push(`/login?registered=${encodeURIComponent(res.message ?? '')}`);
+      return;
+    }
+    if (res.user) {
+      setUser(res.user);
+      router.push('/dashboard');
+    }
   }, [router]);
 
   const logout = useCallback(() => {

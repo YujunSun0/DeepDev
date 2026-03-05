@@ -9,13 +9,22 @@ export class UsersService {
     email: string;
     passwordHash: string;
     name?: string;
+    emailVerified?: boolean;
   }) {
     return this.prisma.user.create({
       data: {
         email: data.email,
         passwordHash: data.passwordHash,
         name: data.name ?? null,
+        emailVerified: data.emailVerified ?? false,
       },
+    });
+  }
+
+  async setEmailVerified(userId: string): Promise<void> {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { emailVerified: true },
     });
   }
 
