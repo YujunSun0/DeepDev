@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useConceptTree, useMasteries } from '@/hooks/use-api';
 import { useAuth } from '@/hooks/use-auth';
@@ -26,9 +26,20 @@ const levelLabels: Record<number, string> = {
   5: '실전 사고력',
 };
 
+const VALID_DOMAINS = ['javascript', 'dsa', 'os-network', 'react'];
+
 export default function SessionPage() {
-  const [activeDomain, setActiveDomain] = useState('javascript');
+  const searchParams = useSearchParams();
+  const domainFromUrl = searchParams.get('domain');
+  const initialDomain = domainFromUrl && VALID_DOMAINS.includes(domainFromUrl) ? domainFromUrl : 'javascript';
+  const [activeDomain, setActiveDomain] = useState(initialDomain);
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    if (domainFromUrl && VALID_DOMAINS.includes(domainFromUrl)) {
+      setActiveDomain(domainFromUrl);
+    }
+  }, [domainFromUrl]);
   const { user } = useAuth();
   const { data: concepts, isLoading } = useConceptTree();
   const { data: masteries } = useMasteries();
@@ -41,14 +52,16 @@ export default function SessionPage() {
     masteries?.map((m) => [m.conceptId, m.masteryScore]) ?? [],
   );
 
-  const allConcepts = concepts ?? [];
-  const levelGroups = allConcepts.reduce(
+  const conceptsByDomain = (concepts ?? []).filter(
+    (c) => (c as { domain?: string }).domain === activeDomain,
+  );
+  const levelGroups = conceptsByDomain.reduce(
     (acc, c) => {
       if (!acc[c.level]) acc[c.level] = [];
       acc[c.level].push(c);
       return acc;
     },
-    {} as Record<number, typeof allConcepts>,
+    {} as Record<number, typeof conceptsByDomain>,
   );
 
   const handleStart = async (conceptId: string, level: number) => {
@@ -78,7 +91,13 @@ export default function SessionPage() {
           <p className="mb-5 text-sm text-gray-400">
             학습할 개념을 선택하세요 &middot; 현재 플랜으로 Level {maxLevel}까지 이용 가능
           </p>
-          <DomainTabs activeId={activeDomain} onChange={setActiveDomain} />
+          <DomainTabs
+            activeId={activeDomain}
+            onChange={(id) => {
+              setActiveDomain(id);
+              router.replace(`/session?domain=${id}`);
+            }}
+          />
         </div>
 
         <div className="mb-6">
@@ -89,7 +108,7 @@ export default function SessionPage() {
           <ErrorMessage message={error} onDismiss={() => setError('')} className="mb-6" />
         )}
 
-        {activeDomain === 'javascript' ? (
+        {conceptsByDomain.length > 0 ? (
           <div className="space-y-10">
             {Object.entries(levelGroups)
               .sort(([a], [b]) => Number(a) - Number(b))

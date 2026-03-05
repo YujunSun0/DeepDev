@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import {
   Clock, CheckCircle2, Loader2, ChevronLeft, ChevronRight,
   BookOpen, Trophy, AlertTriangle, Eye, Play, X,
@@ -303,18 +303,30 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 type FilterState = '' | 'CLOSED' | 'IN_PROGRESS';
 
+const HISTORY_DOMAINS = ['', 'javascript', 'dsa', 'os-network', 'react'];
+
 export default function HistoryPage() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const detailFromQuery = searchParams.get('detail');
+  const domainFromUrl = searchParams.get('domain');
 
   const [filter, setFilter] = useState<FilterState>('');
-  const [domain, setDomain] = useState('');
+  const [domain, setDomain] = useState(
+    domainFromUrl && HISTORY_DOMAINS.includes(domainFromUrl) ? domainFromUrl : '',
+  );
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(detailFromQuery);
 
   useEffect(() => {
     if (detailFromQuery) setSelectedId(detailFromQuery);
   }, [detailFromQuery]);
+
+  useEffect(() => {
+    if (domainFromUrl !== null && domainFromUrl !== domain) {
+      setDomain(HISTORY_DOMAINS.includes(domainFromUrl) ? domainFromUrl : '');
+    }
+  }, [domainFromUrl, domain]);
 
   const stateParam = filter === 'IN_PROGRESS' ? undefined : filter || undefined;
   const { data, isLoading } = useSessions({
@@ -346,7 +358,15 @@ export default function HistoryPage() {
         <div className="mb-6">
           <DomainTabs
             activeId={domain}
-            onChange={(id) => { setDomain(id); setPage(1); }}
+            onChange={(id) => {
+              setDomain(id);
+              setPage(1);
+              const params = new URLSearchParams(searchParams.toString());
+              if (id) params.set('domain', id);
+              else params.delete('domain');
+              const newUrl = params.toString() ? `/history?${params}` : '/history';
+              router.replace(newUrl);
+            }}
             showAllOption
           />
         </div>
@@ -381,7 +401,7 @@ export default function HistoryPage() {
             <Clock className="mb-3 h-12 w-12 text-gray-200" />
             <p className="text-sm text-gray-400">아직 학습 기록이 없습니다</p>
             <Link
-              href="/session"
+              href={domain ? `/session?domain=${domain}` : '/session'}
               className="mt-4 rounded-xl bg-primary-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-400"
             >
               첫 세션 시작하기
@@ -456,7 +476,16 @@ export default function HistoryPage() {
 
       {/* 상세 모달 */}
       {selectedId && (
-        <DetailModal sessionId={selectedId} onClose={() => setSelectedId(null)} />
+        <DetailModal
+          sessionId={selectedId}
+          onClose={() => {
+            setSelectedId(null);
+            const params = new URLSearchParams(searchParams.toString());
+            params.delete('detail');
+            const newUrl = params.toString() ? `/history?${params}` : '/history';
+            router.replace(newUrl);
+          }}
+        />
       )}
     </div>
   );
