@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { SiJavascript, SiReact } from 'react-icons/si';
 import { HiOutlineAcademicCap, HiOutlineServerStack } from 'react-icons/hi2';
+import { LandingNav } from '@/components/landing-nav';
+import { LandingCta } from '@/components/landing-cta';
 
 const domains = [
   { name: 'JavaScript', tag: '출시', available: true, icon: <SiJavascript className="h-8 w-8" />, iconColor: 'text-yellow-400' },
@@ -49,19 +51,7 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary-900/40 via-gray-900 to-gray-900" />
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-primary-500/10 rounded-full blur-3xl" />
 
-        <nav className="relative z-10 mx-auto flex max-w-6xl items-center justify-between px-6 py-5">
-          <span className="text-xl font-bold text-white">
-            <span className="text-primary-400">Deep</span>Dev
-          </span>
-          <div className="flex items-center gap-3">
-            <Link href="/login" className="rounded-xl px-5 py-2.5 text-sm font-medium text-gray-300 transition hover:text-white">
-              로그인
-            </Link>
-            <Link href="/login" className="rounded-xl bg-primary-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-400">
-              시작하기
-            </Link>
-          </div>
-        </nav>
+        <LandingNav />
 
         <div className="relative z-10 mx-auto max-w-6xl px-6 pb-24 pt-20 text-center">
           <div className="mb-6 inline-flex items-center rounded-full border border-primary-500/30 bg-primary-500/10 px-4 py-1.5 text-sm text-primary-300">
@@ -79,12 +69,7 @@ export default function HomePage() {
             단순 Q&A가 아닌, 체계적인 실력 측정 시스템.
           </p>
           <div className="flex items-center justify-center gap-4">
-            <Link
-              href="/login"
-              className="rounded-2xl bg-primary-500 px-8 py-4 text-base font-semibold text-white shadow-lg shadow-primary-500/25 transition hover:bg-primary-400 hover:shadow-primary-400/30"
-            >
-              무료로 시작하기
-            </Link>
+            <LandingCta variant="hero" />
           </div>
         </div>
       </section>
@@ -247,12 +232,7 @@ export default function HomePage() {
             무료 플랜으로 시작할 수 있습니다.
             회원가입 후 바로 첫 세션을 시작하세요.
           </p>
-          <Link
-            href="/login"
-            className="inline-block rounded-2xl bg-primary-500 px-10 py-4 text-base font-semibold text-white shadow-lg shadow-primary-500/25 transition hover:bg-primary-400"
-          >
-            무료로 시작하기
-          </Link>
+          <LandingCta variant="cta" />
         </div>
       </section>
 
