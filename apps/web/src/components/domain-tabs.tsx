@@ -43,7 +43,7 @@ const domains: Domain[] = [
   {
     id: 'react',
     name: 'React',
-    available: false,
+    available: true,
     icon: <SiReact className="h-4 w-4" />,
     iconColor: 'text-cyan-400',
   },
@@ -52,11 +52,25 @@ const domains: Domain[] = [
 interface DomainTabsProps {
   activeId: string;
   onChange: (id: string) => void;
+  /** '전체' 탭을 맨 앞에 추가 (id: '') */
+  showAllOption?: boolean;
 }
 
-export function DomainTabs({ activeId, onChange }: DomainTabsProps) {
+export function DomainTabs({ activeId, onChange, showAllOption }: DomainTabsProps) {
   return (
     <div className="flex items-center gap-2 overflow-x-auto">
+      {showAllOption && (
+        <button
+          onClick={() => onChange('')}
+          className={`shrink-0 rounded-xl px-4 py-2 text-sm font-medium transition ${
+            activeId === ''
+              ? 'bg-primary-500 text-white shadow-sm'
+              : 'bg-white text-gray-600 hover:bg-gray-50'
+          }`}
+        >
+          전체
+        </button>
+      )}
       {domains.map((d) => (
         <button
           key={d.id}

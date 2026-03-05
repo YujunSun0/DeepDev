@@ -32,11 +32,13 @@ export class SessionsController {
   findAll(
     @CurrentUser() user: CurrentUserPayload,
     @Query('state') state?: string,
+    @Query('domain') domain?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
     return this.sessionsService.findByUser(user.id, {
       state,
+      domain,
       page: page ? parseInt(page, 10) : undefined,
       limit: limit ? parseInt(limit, 10) : undefined,
     });

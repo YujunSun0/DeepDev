@@ -107,6 +107,22 @@ const conceptIcons: Record<string, React.ReactNode> = {
   '가상 메모리': <Layers className="h-4 w-4" />,
   'DNS': <Network className="h-4 w-4" />,
   '웹소켓': <Repeat className="h-4 w-4" />,
+  // React
+  'React 컴포넌트': <Box className="h-4 w-4" />,
+  'JSX': <Braces className="h-4 w-4" />,
+  'Props': <Pointer className="h-4 w-4" />,
+  '조건부 렌더링': <FunctionSquare className="h-4 w-4" />,
+  '리스트 렌더링': <LayoutList className="h-4 w-4" />,
+  '컴포넌트 순수성': <Zap className="h-4 w-4" />,
+  '이벤트 처리': <Pointer className="h-4 w-4" />,
+  'State (useState)': <Layers className="h-4 w-4" />,
+  'State 끌어올리기': <ArrowUpDown className="h-4 w-4" />,
+  'useReducer': <Workflow className="h-4 w-4" />,
+  'Context': <Globe className="h-4 w-4" />,
+  'useEffect': <Repeat className="h-4 w-4" />,
+  'useRef': <Pointer className="h-4 w-4" />,
+  'Custom Hooks': <Zap className="h-4 w-4" />,
+  'useReducer + Context': <Workflow className="h-4 w-4" />,
 };
 
 function InfoTooltip({ text }: { text: string }) {

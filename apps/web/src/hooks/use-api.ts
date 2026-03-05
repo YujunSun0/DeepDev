@@ -90,9 +90,10 @@ interface SessionListResponse {
   totalPages: number;
 }
 
-export function useSessions(options?: { state?: string; page?: number; limit?: number }) {
+export function useSessions(options?: { state?: string; domain?: string; page?: number; limit?: number }) {
   const params = new URLSearchParams();
   if (options?.state) params.set('state', options.state);
+  if (options?.domain) params.set('domain', options.domain);
   if (options?.page) params.set('page', String(options.page));
   if (options?.limit) params.set('limit', String(options.limit));
   const qs = params.toString();

@@ -125,11 +125,12 @@ export class SessionsService {
     return session;
   }
 
-  async findByUser(userId: string, options?: { state?: string; page?: number; limit?: number }) {
+  async findByUser(userId: string, options?: { state?: string; domain?: string; page?: number; limit?: number }) {
     const page = options?.page ?? 1;
     const limit = options?.limit ?? 20;
     const where: any = { userId };
     if (options?.state) where.state = options.state;
+    if (options?.domain) where.concept = { domain: options.domain };
 
     const [items, total] = await Promise.all([
       this.prisma.session.findMany({

@@ -366,6 +366,150 @@ const concepts = [
     prerequisiteIds: ['HTTP/HTTPS'],
     masteryWeight: 1.4,
   },
+
+  // ========== React (domain: react) ==========
+  // 선수: JavaScript (함수, 배열/객체)
+
+  // Level 1 - Describing the UI
+  {
+    name: 'React 컴포넌트',
+    domain: 'react',
+    description:
+      '컴포넌트의 정의, 함수형 컴포넌트, JSX 반환, 컴포넌트 중첩을 이해합니다.',
+    level: 1,
+    prerequisiteIds: ['함수 (Functions)', '배열/객체 (Array & Object)'],
+    masteryWeight: 1.2,
+  },
+  {
+    name: 'JSX',
+    domain: 'react',
+    description:
+      'JSX 문법, HTML과의 차이, className, 자식 요소, 표현식 중괄호를 이해합니다.',
+    level: 1,
+    prerequisiteIds: ['React 컴포넌트'],
+    masteryWeight: 1.1,
+  },
+  {
+    name: 'Props',
+    domain: 'react',
+    description:
+      'Props 전달, 읽기, 기본값, children을 이해합니다.',
+    level: 1,
+    prerequisiteIds: ['React 컴포넌트'],
+    masteryWeight: 1.1,
+  },
+  {
+    name: '조건부 렌더링',
+    domain: 'react',
+    description:
+      '삼항 연산자, && 연산자, 조건에 따른 JSX 분기 렌더링을 이해합니다.',
+    level: 1,
+    prerequisiteIds: ['JSX', 'Props'],
+    masteryWeight: 1.1,
+  },
+  {
+    name: '리스트 렌더링',
+    domain: 'react',
+    description:
+      'map()으로 리스트 렌더링, key prop의 필요성과 올바른 사용을 이해합니다.',
+    level: 1,
+    prerequisiteIds: ['JSX', 'Props', '배열/객체 (Array & Object)'],
+    masteryWeight: 1.2,
+  },
+  {
+    name: '컴포넌트 순수성',
+    domain: 'react',
+    description:
+      '순수 함수, 부수 효과, React의 렌더링 가정을 이해합니다.',
+    level: 1,
+    prerequisiteIds: ['React 컴포넌트', '함수 (Functions)'],
+    masteryWeight: 1.2,
+  },
+
+  // Level 2 - Adding Interactivity & Managing State
+  {
+    name: '이벤트 처리',
+    domain: 'react',
+    description:
+      'onClick, onChange 등 이벤트 핸들러, 인라인 vs 함수 참조를 이해합니다.',
+    level: 2,
+    prerequisiteIds: ['React 컴포넌트', 'Props'],
+    masteryWeight: 1.2,
+  },
+  {
+    name: 'State (useState)',
+    domain: 'react',
+    description:
+      'useState 훅, 상태 업데이트, 배치 처리, State as Snapshot을 이해합니다.',
+    level: 2,
+    prerequisiteIds: ['이벤트 처리'],
+    masteryWeight: 1.4,
+  },
+  {
+    name: 'State 끌어올리기',
+    domain: 'react',
+    description:
+      '공유 상태를 상위로 올리는 패턴, 단방향 데이터 흐름을 이해합니다.',
+    level: 2,
+    prerequisiteIds: ['State (useState)', 'Props'],
+    masteryWeight: 1.3,
+  },
+  {
+    name: 'useReducer',
+    domain: 'react',
+    description:
+      '복잡한 상태 로직, reducer 패턴, dispatch를 이해합니다.',
+    level: 2,
+    prerequisiteIds: ['State (useState)'],
+    masteryWeight: 1.4,
+  },
+  {
+    name: 'Context',
+    domain: 'react',
+    description:
+      'createContext, Provider, useContext, prop drilling 해결을 이해합니다.',
+    level: 2,
+    prerequisiteIds: ['Props', 'State 끌어올리기'],
+    masteryWeight: 1.4,
+  },
+  {
+    name: 'useEffect',
+    domain: 'react',
+    description:
+      '부수 효과, 의존성 배열, 클린업 함수, 타이밍을 이해합니다.',
+    level: 2,
+    prerequisiteIds: ['State (useState)'],
+    masteryWeight: 1.5,
+  },
+
+  // Level 3 - Escape Hatches
+  {
+    name: 'useRef',
+    domain: 'react',
+    description:
+      'DOM 참조, 렌더링과 무관한 값 보관, ref와 state의 차이를 이해합니다.',
+    level: 3,
+    prerequisiteIds: ['State (useState)', '이벤트 처리'],
+    masteryWeight: 1.3,
+  },
+  {
+    name: 'Custom Hooks',
+    domain: 'react',
+    description:
+      'use로 시작하는 커스텀 훅, 로직 재사용, 훅 규칙을 이해합니다.',
+    level: 3,
+    prerequisiteIds: ['State (useState)', 'useEffect'],
+    masteryWeight: 1.5,
+  },
+  {
+    name: 'useReducer + Context',
+    domain: 'react',
+    description:
+      'Reducer와 Context 조합으로 전역 상태 관리, 스케일업 패턴을 이해합니다.',
+    level: 3,
+    prerequisiteIds: ['useReducer', 'Context'],
+    masteryWeight: 1.5,
+  },
 ];
 
 async function main() {

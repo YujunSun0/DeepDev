@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import {
@@ -10,6 +10,7 @@ import {
 import { useSessions } from '@/hooks/use-api';
 import { api } from '@/lib/api';
 import { MarkdownRenderer } from '@/components/markdown-renderer';
+import { DomainTabs } from '@/components/domain-tabs';
 import { HistorySkeleton } from '@/components/skeletons';
 
 function ScoreBadge({ score }: { score: number | null }) {
@@ -64,18 +65,37 @@ interface SessionDetail {
   createdAt: string;
 }
 
+type DetailTab = 'summary' | 'explanation' | 'objective' | 'subjective' | 'application';
+
 function DetailModal({ sessionId, onClose }: { sessionId: string; onClose: () => void }) {
   const [data, setData] = useState<SessionDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<DetailTab>('summary');
 
-  useState(() => {
+  useEffect(() => {
     api.get<SessionDetail>(`/sessions/${sessionId}`).then(({ data }) => {
       setData(data);
       setLoading(false);
     }).catch(() => setLoading(false));
-  });
+  }, [sessionId]);
 
   const ctx = data?.context;
+
+  const tabs = useMemo(() => {
+    if (!ctx) return [];
+    const list: { id: DetailTab; label: string }[] = [{ id: 'summary', label: '요약' }];
+    if (ctx.explanation) list.push({ id: 'explanation', label: '개념설명' });
+    if (ctx.objective) list.push({ id: 'objective', label: '객관식' });
+    if (ctx.subjective?.userAnswer) list.push({ id: 'subjective', label: '서술형' });
+    if (ctx.application?.userAnswer) list.push({ id: 'application', label: '응용' });
+    return list;
+  }, [ctx]);
+
+  useEffect(() => {
+    if (tabs.length && !tabs.some((t) => t.id === activeTab)) {
+      setActiveTab(tabs[0].id);
+    }
+  }, [tabs, activeTab]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={onClose}>
@@ -130,117 +150,135 @@ function DetailModal({ sessionId, onClose }: { sessionId: string; onClose: () =>
                 </Link>
               </div>
             ) : (
-              <div className="space-y-5">
-                {/* 점수 요약 */}
-                {ctx && (
-                  <div className="grid grid-cols-3 gap-3">
-                    {[
-                      { label: '객관식', score: ctx.objective?.score },
-                      { label: '서술형', score: ctx.subjective?.score },
-                      { label: '응용', score: ctx.application?.score },
-                    ].map((item) => (
-                      <div key={item.label} className="rounded-2xl bg-gray-50 p-4 text-center">
-                        <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">{item.label}</p>
-                        <p className={`mt-1 text-2xl font-extrabold ${
-                          (item.score ?? 0) >= 80 ? 'text-emerald-500' :
-                          (item.score ?? 0) >= 50 ? 'text-amber-500' : 'text-red-400'
-                        }`}>
-                          {item.score ?? '-'}
-                        </p>
-                      </div>
+              <div className="space-y-4">
+                {/* 탭 */}
+                {tabs.length > 0 && (
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {tabs.map((t) => (
+                      <button
+                        key={t.id}
+                        onClick={() => setActiveTab(t.id)}
+                        className={`shrink-0 rounded-xl px-4 py-2 text-sm font-medium transition ${
+                          activeTab === t.id
+                            ? 'bg-primary-500 text-white shadow-sm'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {t.label}
+                      </button>
                     ))}
                   </div>
                 )}
 
-                {/* 개념 설명 */}
-                {ctx?.explanation && (
-                  <Section title="개념 설명">
-                    <MarkdownRenderer content={ctx.explanation.explanation} />
-                  </Section>
-                )}
-
-                {/* 객관식 */}
-                {ctx?.objective && (
-                  <Section title="객관식 문제">
-                    <MarkdownRenderer content={ctx.objective.question} />
-                    {ctx.objective.userAnswer && (
-                      <div className="mt-3 space-y-1.5">
-                        {ctx.objective.options?.map((opt: string, i: number) => {
-                          const label = String.fromCharCode(65 + i);
-                          const isUser = ctx.objective.userAnswer?.toUpperCase() === label;
-                          const isCorrect = ctx.objective.correctAnswer?.toUpperCase() === label;
-                          return (
-                            <div
-                              key={i}
-                              className={`rounded-xl px-3 py-2 text-sm ${
-                                isCorrect ? 'bg-emerald-50 text-emerald-700 font-medium' :
-                                isUser ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-600'
-                              }`}
-                            >
-                              <span className="font-bold mr-2">{label}.</span>{opt}
-                              {isCorrect && <span className="ml-2 text-[10px]">✓ 정답</span>}
-                              {isUser && !isCorrect && <span className="ml-2 text-[10px]">← 내 선택</span>}
+                {/* 탭별 콘텐츠 */}
+                <div className="min-h-[200px]">
+                  {activeTab === 'summary' && ctx && (
+                    <div className="space-y-5">
+                      <div className="grid grid-cols-3 gap-3">
+                        {[
+                          { label: '객관식', score: ctx.objective?.score },
+                          { label: '서술형', score: ctx.subjective?.score },
+                          { label: '응용', score: ctx.application?.score },
+                        ].map((item) => (
+                          <div key={item.label} className="rounded-2xl bg-gray-50 p-4 text-center">
+                            <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400">{item.label}</p>
+                            <p className={`mt-1 text-2xl font-extrabold ${
+                              (item.score ?? 0) >= 80 ? 'text-emerald-500' :
+                              (item.score ?? 0) >= 50 ? 'text-amber-500' : 'text-red-400'
+                            }`}>
+                              {item.score ?? '-'}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                      {ctx.summary && (
+                        <Section title="AI 총평">
+                          <MarkdownRenderer content={ctx.summary.overallAssessment} />
+                          {ctx.summary.recommendations?.length > 0 && (
+                            <div className="mt-3">
+                              <p className="text-xs font-semibold text-gray-500 mb-1">추천 학습</p>
+                              <ul className="space-y-1">
+                                {ctx.summary.recommendations.map((r: string, i: number) => (
+                                  <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
+                                    <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary-400" />
+                                    {r}
+                                  </li>
+                                ))}
+                              </ul>
                             </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </Section>
-                )}
-
-                {/* 서술형 */}
-                {ctx?.subjective?.userAnswer && (
-                  <Section title="서술형 문제">
-                    <MarkdownRenderer content={ctx.subjective.question} />
-                    <div className="mt-3 rounded-xl bg-blue-50/50 px-4 py-3">
-                      <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400 mb-1">내 답변</p>
-                      <p className="text-sm text-gray-700">{ctx.subjective.userAnswer}</p>
+                          )}
+                        </Section>
+                      )}
                     </div>
-                    {ctx.subjective.feedback && (
-                      <div className="mt-2">
-                        <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400 mb-1">AI 피드백</p>
-                        <MarkdownRenderer content={ctx.subjective.feedback} />
-                      </div>
-                    )}
-                  </Section>
-                )}
+                  )}
 
-                {/* 응용 */}
-                {ctx?.application?.userAnswer && (
-                  <Section title="응용 문제">
-                    <MarkdownRenderer content={ctx.application.question} />
-                    <div className="mt-3 rounded-xl bg-blue-50/50 px-4 py-3">
-                      <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400 mb-1">내 코드</p>
-                      <MarkdownRenderer content={`\`\`\`javascript\n${ctx.application.userAnswer}\n\`\`\``} />
-                    </div>
-                    {ctx.application.feedback && (
-                      <div className="mt-2">
-                        <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400 mb-1">AI 피드백</p>
-                        <MarkdownRenderer content={ctx.application.feedback} />
-                      </div>
-                    )}
-                  </Section>
-                )}
+                  {activeTab === 'explanation' && ctx?.explanation && (
+                    <Section title="개념 설명">
+                      <MarkdownRenderer content={ctx.explanation.explanation} />
+                    </Section>
+                  )}
 
-                {/* 총평 */}
-                {ctx?.summary && (
-                  <Section title="AI 총평">
-                    <MarkdownRenderer content={ctx.summary.overallAssessment} />
-                    {ctx.summary.recommendations?.length > 0 && (
-                      <div className="mt-3">
-                        <p className="text-xs font-semibold text-gray-500 mb-1">추천 학습</p>
-                        <ul className="space-y-1">
-                          {ctx.summary.recommendations.map((r: string, i: number) => (
-                            <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
-                              <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary-400" />
-                              {r}
-                            </li>
-                          ))}
-                        </ul>
+                  {activeTab === 'objective' && ctx?.objective && (
+                    <Section title="객관식 문제">
+                      <MarkdownRenderer content={ctx.objective.question} />
+                      {ctx.objective.userAnswer && (
+                        <div className="mt-3 space-y-1.5">
+                          {ctx.objective.options?.map((opt: string, i: number) => {
+                            const label = String.fromCharCode(65 + i);
+                            const isUser = ctx.objective.userAnswer?.toUpperCase() === label;
+                            const isCorrect = ctx.objective.correctAnswer?.toUpperCase() === label;
+                            return (
+                              <div
+                                key={i}
+                                className={`rounded-xl px-3 py-2 text-sm ${
+                                  isCorrect ? 'bg-emerald-50 text-emerald-700 font-medium' :
+                                  isUser ? 'bg-red-50 text-red-600' : 'bg-gray-50 text-gray-600'
+                                }`}
+                              >
+                                <span className="font-bold mr-2">{label}.</span>{opt}
+                                {isCorrect && <span className="ml-2 text-[10px]">✓ 정답</span>}
+                                {isUser && !isCorrect && <span className="ml-2 text-[10px]">← 내 선택</span>}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </Section>
+                  )}
+
+                  {activeTab === 'subjective' && ctx?.subjective?.userAnswer && (
+                    <Section title="서술형 문제">
+                      <MarkdownRenderer content={ctx.subjective.question} />
+                      <div className="mt-3 rounded-xl bg-blue-50/50 px-4 py-3">
+                        <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400 mb-1">내 답변</p>
+                        <p className="text-sm text-gray-700">{ctx.subjective.userAnswer}</p>
                       </div>
-                    )}
-                  </Section>
-                )}
+                      {ctx.subjective.feedback && (
+                        <div className="mt-2">
+                          <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400 mb-1">AI 피드백</p>
+                          <MarkdownRenderer content={ctx.subjective.feedback} />
+                        </div>
+                      )}
+                    </Section>
+                  )}
+
+                  {activeTab === 'application' && ctx?.application?.userAnswer && (
+                    <Section title="응용 문제">
+                      <MarkdownRenderer content={ctx.application.question} />
+                      <div className="mt-3 rounded-xl bg-blue-50/50 px-4 py-3">
+                        <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400 mb-1">내 코드</p>
+                        <MarkdownRenderer content={`\`\`\`javascript\n${ctx.application.userAnswer}\n\`\`\``} />
+                      </div>
+                      {ctx.application.feedback && (
+                        <div className="mt-2">
+                          <p className="text-[10px] font-medium uppercase tracking-wider text-gray-400 mb-1">AI 피드백</p>
+                          <MarkdownRenderer content={ctx.application.feedback} />
+                        </div>
+                      )}
+                    </Section>
+                  )}
+
+                </div>
               </div>
             )}
           </>
@@ -270,6 +308,7 @@ export default function HistoryPage() {
   const detailFromQuery = searchParams.get('detail');
 
   const [filter, setFilter] = useState<FilterState>('');
+  const [domain, setDomain] = useState('');
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(detailFromQuery);
 
@@ -278,7 +317,12 @@ export default function HistoryPage() {
   }, [detailFromQuery]);
 
   const stateParam = filter === 'IN_PROGRESS' ? undefined : filter || undefined;
-  const { data, isLoading } = useSessions({ state: stateParam, page, limit: 15 });
+  const { data, isLoading } = useSessions({
+    state: stateParam,
+    domain: domain || undefined,
+    page,
+    limit: 15,
+  });
 
   const items = filter === 'IN_PROGRESS'
     ? (data?.items ?? []).filter(s => s.state !== 'CLOSED')
@@ -296,6 +340,15 @@ export default function HistoryPage() {
         <div className="mb-8">
           <h1 className="mb-1 text-2xl font-bold text-gray-900">학습 기록</h1>
           <p className="text-sm text-gray-400">지금까지의 학습 세션을 확인하세요</p>
+        </div>
+
+        {/* 도메인 탭 */}
+        <div className="mb-6">
+          <DomainTabs
+            activeId={domain}
+            onChange={(id) => { setDomain(id); setPage(1); }}
+            showAllOption
+          />
         </div>
 
         {/* 필터 */}

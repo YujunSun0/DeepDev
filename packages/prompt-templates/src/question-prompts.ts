@@ -42,12 +42,13 @@ export const BASIC_QUESTION_PROMPT = (
   "question": "문제 본문 (마크다운 사용 가능, 코드는 \`\`\`javascript 코드블럭 사용)",
   "options": ["A) 선택지1", "B) 선택지2", "C) 선택지3", "D) 선택지4"],
   "correctAnswer": "A",
-  "explanation": "정답인 이유와 각 오답이 틀린 이유에 대한 해설 (마크다운 사용)"
+  "explanation": "정답인 이유 + 각 오답(A,B,C,D)마다: (1) 왜 틀렸는지 (2) 이 선택지를 고를 때 흔한 오해는 무엇인지. 마크다운 사용"
 }
 
 주의:
 - correctAnswer는 반드시 "A", "B", "C", "D" 중 하나
 - 단순 암기가 아닌 개념 이해를 테스트하는 문제 출제
+- explanation에서 **각 오답마다** "왜 틀렸는지"와 "이 선택지를 고를 때 흔한 오해"를 구체적으로 작성하세요
 - question과 explanation에서 코드가 있으면 반드시 \`\`\`javascript 코드블럭을 사용하세요`;
 
 export const SUBJECTIVE_QUESTION_PROMPT = (
