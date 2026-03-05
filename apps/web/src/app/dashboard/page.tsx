@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Trophy, Flame, BookOpen, TrendingUp,
   Braces, Box, ScanSearch, FunctionSquare, Layers,
@@ -12,11 +13,19 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { useGSI, useConceptTree, useWeakConcepts, useSessions, useMasteries } from '@/hooks/use-api';
 import { useAuth } from '@/hooks/use-auth';
+import { api } from '@/lib/api';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { DomainTabs } from '@/components/domain-tabs';
 import { UsageWarning } from '@/components/usage-warning';
 import { GrowthChart } from '@/components/charts';
 import { DashboardSkeleton } from '@/components/skeletons';
+import { ConfirmModal } from '@/components/ui/confirm-modal';
+
+const PLAN_MAX_LEVEL: Record<string, number> = {
+  FREE: 2,
+  PRO: 4,
+  MASTER: 5,
+};
 
 /* ───── helpers ───── */
 
@@ -100,7 +109,12 @@ const levelMeta: Record<number, { label: string; color: string; bg: string }> = 
 
 export default function DashboardPage() {
   const [activeDomain, setActiveDomain] = useState('javascript');
+  const [sessionStartModalOpen, setSessionStartModalOpen] = useState(false);
+  const [selectedConcept, setSelectedConcept] = useState<{ id: string; name: string; level: number } | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [sessionStartError, setSessionStartError] = useState('');
   const queryClient = useQueryClient();
+  const router = useRouter();
   const { data: gsi, isPending: gsiLoading, isError: gsiError, error: gsiErrorObj } = useGSI();
   const { data: concepts, isPending: conceptsLoading, isError: conceptsError, error: conceptsErrorObj } = useConceptTree();
   const { data: weakConcepts } = useWeakConcepts();
@@ -114,6 +128,7 @@ export default function DashboardPage() {
   const firstError = gsiErrorObj ?? conceptsErrorObj ?? sessionsErrorObj ?? masteriesErrorObj;
 
   const isPro = user?.planType === 'PRO' || user?.planType === 'MASTER';
+  const maxLevel = PLAN_MAX_LEVEL[user?.planType ?? 'FREE'] ?? 2;
 
   const masteryMap = new Map(
     masteries?.map((m) => [m.conceptId, m.masteryScore]) ?? [],
@@ -146,6 +161,34 @@ export default function DashboardPage() {
     queryClient.invalidateQueries({ queryKey: ['masteries'] });
     queryClient.invalidateQueries({ queryKey: ['concepts'] });
     queryClient.invalidateQueries({ queryKey: ['sessions'] });
+  };
+
+  const handleConceptClick = (concept: { id: string; name: string; level: number }) => {
+    if (concept.level > maxLevel) return;
+    setSelectedConcept(concept);
+    setSessionStartError('');
+    setSessionStartModalOpen(true);
+  };
+
+  const handleConfirmSessionStart = async () => {
+    if (!selectedConcept) return;
+    setCreating(true);
+    setSessionStartError('');
+    try {
+      const { data } = await api.post('/sessions', {
+        conceptId: selectedConcept.id,
+        level: selectedConcept.level,
+      });
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['usage'] });
+      setSessionStartModalOpen(false);
+      setSelectedConcept(null);
+      router.push(`/session/${data.id}`);
+    } catch (err: unknown) {
+      setSessionStartError(getApiErrorMessage(err));
+    } finally {
+      setCreating(false);
+    }
   };
 
   return (
@@ -299,10 +342,18 @@ export default function DashboardPage() {
                         {items!.map((concept) => {
                           const score = masteryMap.get(concept.id);
                           const icon = conceptIcons[concept.name];
+                          const locked = concept.level > maxLevel;
                           return (
-                            <div
+                            <button
                               key={concept.id}
-                              className="group flex items-center gap-3 rounded-2xl border border-gray-100 px-4 py-3 transition hover:border-primary-100 hover:bg-primary-50/30"
+                              type="button"
+                              onClick={() => handleConceptClick(concept)}
+                              disabled={locked}
+                              className={`group flex w-full items-center gap-3 rounded-2xl border border-gray-100 px-4 py-3 text-left transition ${
+                                locked
+                                  ? 'cursor-default opacity-60'
+                                  : 'cursor-pointer hover:border-primary-100 hover:bg-primary-50/30'
+                              }`}
                             >
                               <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${meta.bg} ${meta.color}`}>
                                 {icon ?? <BookOpen className="h-4 w-4" />}
@@ -327,8 +378,12 @@ export default function DashboardPage() {
                                   <p className="mt-0.5 text-xs text-gray-300">미학습</p>
                                 )}
                               </div>
-                              <ChevronRight className="h-4 w-4 shrink-0 text-gray-200 transition group-hover:text-primary-400" />
-                            </div>
+                              {locked ? (
+                                <LockIcon className="h-4 w-4 shrink-0 text-gray-300" />
+                              ) : (
+                                <ChevronRight className="h-4 w-4 shrink-0 text-gray-200 transition group-hover:text-primary-400" />
+                              )}
+                            </button>
                           );
                         })}
                       </div>
@@ -523,6 +578,24 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      <ConfirmModal
+        open={sessionStartModalOpen}
+        onClose={() => {
+          setSessionStartModalOpen(false);
+          setSelectedConcept(null);
+          setSessionStartError('');
+        }}
+        onConfirm={handleConfirmSessionStart}
+        title={selectedConcept ? `${selectedConcept.name} 학습을 시작할까요?` : '세션 시작'}
+        message="이 세션은 월 세션 한도에 포함됩니다."
+        confirmText="시작하기"
+        cancelText="취소"
+        closeOnConfirm={false}
+        confirmLoading={creating}
+        confirmLoadingText="시작 중..."
+        error={sessionStartError || undefined}
+      />
     </div>
   );
 }

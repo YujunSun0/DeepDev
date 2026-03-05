@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import { useConceptTree, useMasteries } from '@/hooks/use-api';
 import { useAuth } from '@/hooks/use-auth';
 import { DomainTabs } from '@/components/domain-tabs';
@@ -9,7 +11,6 @@ import { api } from '@/lib/api';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { ErrorMessage } from '@/components/ui';
 import { SessionSkeleton } from '@/components/skeletons';
-import { useRouter } from 'next/navigation';
 
 const PLAN_MAX_LEVEL: Record<string, number> = {
   FREE: 2,
@@ -27,6 +28,7 @@ const levelLabels: Record<number, string> = {
 
 export default function SessionPage() {
   const [activeDomain, setActiveDomain] = useState('javascript');
+  const queryClient = useQueryClient();
   const { user } = useAuth();
   const { data: concepts, isLoading } = useConceptTree();
   const { data: masteries } = useMasteries();
@@ -54,6 +56,8 @@ export default function SessionPage() {
     setError('');
     try {
       const { data } = await api.post('/sessions', { conceptId, level });
+      queryClient.invalidateQueries({ queryKey: ['sessions'] });
+      queryClient.invalidateQueries({ queryKey: ['usage'] });
       router.push(`/session/${data.id}`);
     } catch (err: unknown) {
       setError(getApiErrorMessage(err));
