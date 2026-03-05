@@ -4,6 +4,7 @@ import { LlmService } from '../../llm/llm.service';
 import { MasteryService } from '../mastery/mastery.service';
 import { ConceptsService } from '../concepts/concepts.service';
 import { UsageService } from '../usage/usage.service';
+import { UsersService } from '../users/users.service';
 import {
   CONCEPT_EXPLANATION_PROMPT,
   BASIC_QUESTION_PROMPT,
@@ -92,6 +93,7 @@ export class SessionsService {
     private readonly mastery: MasteryService,
     private readonly concepts: ConceptsService,
     private readonly usage: UsageService,
+    private readonly users: UsersService,
   ) {}
 
   /* ── Basic CRUD ── */
@@ -157,10 +159,14 @@ export class SessionsService {
       return { state: session.state, explanation: ctx.explanation };
     }
 
+    const user = await this.users.findById(userId);
+    const preferredLanguage = user?.preferredLanguage ?? null;
+
     const prompt = CONCEPT_EXPLANATION_PROMPT(
       session.concept.name,
       session.level,
       session.concept.description,
+      preferredLanguage,
     );
 
     const { content, tokensUsed } = await this.llm.chat(prompt);
@@ -192,11 +198,15 @@ export class SessionsService {
 
     if (session.state !== STATES.EXPLAINING) throw new BadRequestException('올바른 상태가 아닙니다');
 
+    const user = await this.users.findById(userId);
+    const preferredLanguage = user?.preferredLanguage ?? null;
+
     const ctx = (session.context as SessionContext) ?? {};
     const prompt = BASIC_QUESTION_PROMPT(
       session.concept.name,
       session.level,
       ctx.explanation?.explanation ?? '',
+      preferredLanguage,
     );
 
     const { content, tokensUsed } = await this.llm.chat(prompt);
@@ -355,6 +365,9 @@ export class SessionsService {
     if (session.state !== STATES.SUBJECTIVE) throw new BadRequestException('올바른 상태가 아닙니다');
 
     const ctx = (session.context as SessionContext) ?? {};
+    const user = await this.users.findById(userId);
+    const preferredLanguage = user?.preferredLanguage ?? null;
+
     const domain = (session.concept as { domain?: string }).domain ?? 'javascript';
     const previousScores = {
       objective: ctx.objective?.score ?? 0,
@@ -362,8 +375,8 @@ export class SessionsService {
     };
     const useCsPrompt = domain !== 'javascript' && domain !== 'react';
     const prompt = useCsPrompt
-      ? APPLICATION_QUESTION_PROMPT_CS(session.concept.name, session.level, previousScores)
-      : APPLICATION_QUESTION_PROMPT(session.concept.name, session.level, previousScores);
+      ? APPLICATION_QUESTION_PROMPT_CS(session.concept.name, session.level, previousScores, preferredLanguage)
+      : APPLICATION_QUESTION_PROMPT(session.concept.name, session.level, previousScores, preferredLanguage);
 
     const { content, tokensUsed } = await this.llm.chat(prompt);
     const question = this.llm.parseJson<ApplicationResult>(content);

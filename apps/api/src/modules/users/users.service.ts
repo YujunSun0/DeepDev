@@ -35,4 +35,11 @@ export class UsersService {
   async findById(id: string) {
     return this.prisma.user.findUnique({ where: { id } });
   }
+
+  async updatePreferredLanguage(userId: string, preferredLanguage: string | null) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: { preferredLanguage },
+    });
+  }
 }

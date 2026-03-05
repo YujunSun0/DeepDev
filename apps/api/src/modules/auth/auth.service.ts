@@ -53,6 +53,7 @@ export class AuthService {
         email: user.email,
         name: user.name,
         planType: user.planType,
+        preferredLanguage: user.preferredLanguage,
       },
     };
   }
@@ -85,6 +86,7 @@ export class AuthService {
         email: user.email,
         name: user.name,
         planType: user.planType,
+        preferredLanguage: user.preferredLanguage,
       },
     };
   }
@@ -114,6 +116,7 @@ export class AuthService {
           email: user.email,
           name: user.name,
           planType: user.planType,
+          preferredLanguage: user.preferredLanguage,
         },
       };
     } catch {

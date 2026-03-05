@@ -10,6 +10,7 @@ interface AuthUser {
   email: string;
   name: string | null;
   planType: string;
+  preferredLanguage?: string | null;
 }
 
 interface AuthContextValue {

@@ -5,6 +5,7 @@ interface AuthUser {
   email: string;
   name: string | null;
   planType: string;
+  preferredLanguage?: string | null;
 }
 
 interface AuthResponse {
@@ -70,6 +71,19 @@ export async function refreshUser(): Promise<AuthUser | null> {
   if (typeof window === 'undefined' || !getToken()) return null;
   try {
     const { data } = await api.get<AuthUser>('/users/me');
+    localStorage.setItem(USER_KEY, JSON.stringify(data));
+    return data;
+  } catch {
+    return null;
+  }
+}
+
+export async function updatePreferredLanguage(
+  preferredLanguage: string | null,
+): Promise<AuthUser | null> {
+  if (typeof window === 'undefined' || !getToken()) return null;
+  try {
+    const { data } = await api.patch<AuthUser>('/users/me', { preferredLanguage });
     localStorage.setItem(USER_KEY, JSON.stringify(data));
     return data;
   } catch {

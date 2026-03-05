@@ -21,6 +21,7 @@ model User {
   name               String?
   emailVerified      Boolean  @default(false) @map("email_verified")
   planType           PlanType @default(FREE) @map("plan_type")
+  preferredLanguage String?  @map("preferred_language") @db.VarChar(32)
   lsCustomerId       String?  @map("ls_customer_id")
   lsSubscriptionId   String?  @map("ls_subscription_id")
   subscriptionStatus String?  @map("subscription_status")

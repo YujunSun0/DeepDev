@@ -8,7 +8,7 @@ import { useUsage } from '@/hooks/use-api';
 import {
   LayoutDashboard, GraduationCap, ClipboardList, BarChart3,
   MessageCircle, CreditCard, LogOut, ChevronLeft,
-  Menu, Zap, X, Sparkles,
+  Menu, Zap, X, Sparkles, Settings,
 } from 'lucide-react';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
 
@@ -31,6 +31,7 @@ const NAV_SECTIONS = [
   {
     title: '계정',
     items: [
+      { href: '/settings', label: '설정', icon: Settings },
       { href: '/pricing', label: '요금제', icon: CreditCard },
     ],
   },
