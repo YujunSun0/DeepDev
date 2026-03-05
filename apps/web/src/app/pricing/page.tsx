@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Zap, Crown, Lock, Loader2, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
@@ -12,8 +12,16 @@ export default function PricingPage() {
   const { user, refreshUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [checkoutEnabled, setCheckoutEnabled] = useState<boolean | null>(null);
 
   const isPro = user?.planType === 'PRO' || user?.planType === 'MASTER';
+
+  useEffect(() => {
+    api
+      .get<{ checkoutEnabled: boolean }>('/billing/status')
+      .then(({ data }) => setCheckoutEnabled(data.checkoutEnabled))
+      .catch(() => setCheckoutEnabled(true)); // 실패 시 기본값: 활성화 (기존 동작 유지)
+  }, []);
 
   const handleUpgrade = async () => {
     setLoading(true);
@@ -150,7 +158,7 @@ export default function PricingPage() {
                   현재 플랜
                 </span>
               )}
-              {plan.comingSoon && (
+              {(plan.comingSoon || (plan.name === 'Pro' && checkoutEnabled === false)) && (
                 <span className="mb-4 inline-flex items-center gap-1 rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-500">
                   <Lock className="h-3 w-3" />
                   준비 중
@@ -209,10 +217,17 @@ export default function PricingPage() {
                     현재 플랜
                   </div>
                 )
+              ) : plan.name === 'Pro' && checkoutEnabled === false ? (
+                <button
+                  disabled
+                  className="block w-full cursor-not-allowed rounded-2xl bg-gray-100 py-3.5 text-center text-sm font-semibold text-gray-400"
+                >
+                  준비 중
+                </button>
               ) : plan.name === 'Pro' ? (
                 <button
                   onClick={handleUpgrade}
-                  disabled={loading}
+                  disabled={loading || checkoutEnabled === null}
                   className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary-500 py-3.5 text-sm font-semibold text-white transition hover:bg-primary-400 disabled:opacity-50"
                 >
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}

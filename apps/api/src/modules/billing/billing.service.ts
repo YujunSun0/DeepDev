@@ -38,6 +38,8 @@ export class BillingService {
   private readonly storeId: string;
   private readonly proVariantId: string;
 
+  private readonly checkoutEnabled: boolean;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
@@ -46,9 +48,17 @@ export class BillingService {
     this.signingSecret = this.config.get<string>('LEMONSQUEEZY_SIGNING_SECRET', '');
     this.storeId = this.config.get<string>('LEMONSQUEEZY_STORE_ID', '');
     this.proVariantId = this.config.get<string>('LEMONSQUEEZY_PRO_VARIANT_ID', '');
+    this.checkoutEnabled = this.config.get<string>('BILLING_CHECKOUT_ENABLED', 'true') === 'true';
+  }
+
+  isCheckoutEnabled(): boolean {
+    return this.checkoutEnabled;
   }
 
   async createCheckout(userId: string) {
+    if (!this.checkoutEnabled) {
+      throw new BadRequestException('결제가 준비 중입니다. 곧 이용 가능합니다.');
+    }
     if (!this.apiKey || !this.storeId || !this.proVariantId) {
       throw new BadRequestException('결제 시스템이 아직 설정되지 않았습니다');
     }

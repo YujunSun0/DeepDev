@@ -20,6 +20,11 @@ export class BillingController {
 
   constructor(private readonly billingService: BillingService) {}
 
+  @Get('status')
+  getCheckoutStatus() {
+    return { checkoutEnabled: this.billingService.isCheckoutEnabled() };
+  }
+
   @Post('checkout')
   @UseGuards(JwtAuthGuard)
   createCheckout(@CurrentUser() user: CurrentUserPayload) {
