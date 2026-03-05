@@ -40,6 +40,7 @@ export function getApiErrorMessage(error: unknown): string {
     if (status === 403) return '권한이 없습니다';
     if (status === 404) return '요청한 리소스를 찾을 수 없습니다';
     if (status === 429) return '요청이 너무 많습니다. 잠시 후 다시 시도해주세요';
+    if (status === 502 || status === 503) return '서버가 일시적으로 응답하지 않습니다. 잠시 후 다시 시도해 주세요';
     if (status && status >= 500) return '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요';
   }
 

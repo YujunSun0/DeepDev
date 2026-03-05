@@ -9,8 +9,10 @@ import {
   Globe, Repeat, Timer, Workflow, Zap,
   ChevronRight, Sparkles, Target, AlertTriangle, Info,
 } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useGSI, useConceptTree, useWeakConcepts, useSessions, useMasteries } from '@/hooks/use-api';
 import { useAuth } from '@/hooks/use-auth';
+import { getApiErrorMessage } from '@/lib/api-error';
 import { DomainTabs } from '@/components/domain-tabs';
 import { UsageWarning } from '@/components/usage-warning';
 import { GrowthChart } from '@/components/charts';
@@ -98,15 +100,18 @@ const levelMeta: Record<number, { label: string; color: string; bg: string }> = 
 
 export default function DashboardPage() {
   const [activeDomain, setActiveDomain] = useState('javascript');
-  const { data: gsi, isPending: gsiLoading } = useGSI();
-  const { data: concepts, isPending: conceptsLoading } = useConceptTree();
+  const queryClient = useQueryClient();
+  const { data: gsi, isPending: gsiLoading, isError: gsiError, error: gsiErrorObj } = useGSI();
+  const { data: concepts, isPending: conceptsLoading, isError: conceptsError, error: conceptsErrorObj } = useConceptTree();
   const { data: weakConcepts } = useWeakConcepts();
   const { user } = useAuth();
-  const { data: sessionsData, isPending: sessionsLoading } = useSessions();
+  const { data: sessionsData, isPending: sessionsLoading, isError: sessionsError, error: sessionsErrorObj } = useSessions();
   const { data: closedSessionsData } = useSessions({ state: 'CLOSED', limit: 100 });
-  const { data: masteries, isPending: masteriesLoading } = useMasteries();
+  const { data: masteries, isPending: masteriesLoading, isError: masteriesError, error: masteriesErrorObj } = useMasteries();
 
   const isDashboardLoading = gsiLoading || conceptsLoading || sessionsLoading || masteriesLoading;
+  const hasError = gsiError || conceptsError || sessionsError || masteriesError;
+  const firstError = gsiErrorObj ?? conceptsErrorObj ?? sessionsErrorObj ?? masteriesErrorObj;
 
   const isPro = user?.planType === 'PRO' || user?.planType === 'MASTER';
 
@@ -137,9 +142,28 @@ export default function DashboardPage() {
     return <DashboardSkeleton />;
   }
 
+  const handleRetry = () => {
+    queryClient.invalidateQueries({ queryKey: ['masteries'] });
+    queryClient.invalidateQueries({ queryKey: ['concepts'] });
+    queryClient.invalidateQueries({ queryKey: ['sessions'] });
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 px-6 py-8">
       <div className="mx-auto max-w-7xl">
+        {hasError && (
+          <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl bg-red-50 px-4 py-3.5 text-sm text-red-600">
+            <span>{getApiErrorMessage(firstError)}</span>
+            <button
+              type="button"
+              onClick={handleRetry}
+              className="shrink-0 rounded-xl bg-red-100 px-4 py-2 text-sm font-medium text-red-700 transition hover:bg-red-200"
+            >
+              다시 시도
+            </button>
+          </div>
+        )}
+
         {/* Header */}
         <div className="mb-8">
           <h1 className="mb-1 text-2xl font-bold text-gray-900">대시보드</h1>
