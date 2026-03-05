@@ -50,10 +50,16 @@ export const SUBJECTIVE_QUESTION_PROMPT = (
   level: number,
 ) => `"${conceptName}" 개념 (레벨 ${level}/5)에 대해 학습자가 직접 설명하는 서술형 문제를 출제하세요.
 
+평가 기준은 특정 키워드나 예시를 강제하지 않고, 이해의 깊이와 논리적 설명력을 중심으로 작성하세요.
+
 JSON 형식으로 응답하세요:
 {
   "question": "학습자에게 개념을 자신의 말로 설명하게 하는 구체적인 질문",
-  "evaluationCriteria": ["평가 기준 1: 반드시 포함해야 할 내용", "평가 기준 2: 언급해야 할 핵심 용어", "평가 기준 3: 피해야 할 흔한 오해"]
+  "evaluationCriteria": [
+    "개념의 본질을 자신의 말로 정확히 설명했는가",
+    "핵심 메커니즘을 논리적으로 연결해 설명했는가",
+    "흔한 오해를 피하고 올바른 이해를 드러냈는가"
+  ]
 }`;
 
 export const APPLICATION_QUESTION_PROMPT = (
@@ -63,11 +69,17 @@ export const APPLICATION_QUESTION_PROMPT = (
 ) => `"${conceptName}" 개념 (레벨 ${level}/5)에 대한 응용/실전 문제를 출제하세요.
 학습자의 이전 점수: 객관식 ${previousScores.objective}/100, 서술형 ${previousScores.subjective}/100
 
+평가 기준은 특정 표현을 강제하지 않고, 문제 해결력과 개념 적용 능력을 중심으로 작성하세요.
+
 JSON 형식으로 응답하세요:
 {
   "question": "마크다운 형식의 실전 문제 (코드는 반드시 \`\`\`javascript 코드블럭 사용)",
-  "expectedAnswer": "모범 답안의 핵심 내용",
-  "evaluationCriteria": ["평가 기준 1", "평가 기준 2", "평가 기준 3"]
+  "expectedAnswer": "모범 답안의 핵심 내용 (참고용, 정답 형식은 다양하게 인정)",
+  "evaluationCriteria": [
+    "문제를 올바르게 이해하고 접근했는가",
+    "개념을 실제 상황에 적절히 적용했는가",
+    "논리적이고 일관된 해결 과정을 보였는가"
+  ]
 }
 
 주의:
