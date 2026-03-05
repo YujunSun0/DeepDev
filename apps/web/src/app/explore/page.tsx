@@ -8,11 +8,13 @@ import {
   ChevronLeft, ChevronDown, Sparkles, BookOpen, LogOut, Menu, X,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useConcepts } from '@/hooks/use-api';
+import { useConceptTree } from '@/hooks/use-api';
 import { explorationApi, type ExplorationMessage, type ExplorationDetail } from '@/lib/exploration-api';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { MarkdownRenderer } from '@/components/markdown-renderer';
 import { UsageWarning } from '@/components/usage-warning';
+import { DomainTabs } from '@/components/domain-tabs';
+import { useAutoResizeTextarea } from '@/hooks/use-auto-resize-textarea';
 
 function useTypewriter(text: string, speed = 12) {
   const [displayed, setDisplayed] = useState('');
@@ -96,7 +98,7 @@ export default function ExplorePage() {
     activeExplorationIdRef.current = activeExplorationId;
   }, [activeExplorationId]);
 
-  const { data: concepts } = useConcepts();
+  const { data: concepts } = useConceptTree();
   const { data: explorations, isLoading: loadingList } = useQuery({
     queryKey: ['explorations'],
     queryFn: explorationApi.getAll,
@@ -243,6 +245,11 @@ export default function ExplorePage() {
   };
 
   const handleSend = showNewChat ? handleCreateExploration : handleSendMessage;
+
+  const { ref: inputRef } = useAutoResizeTextarea(input, {
+    minHeightPx: 44,
+    maxHeightPx: 128,
+  });
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -436,7 +443,7 @@ export default function ExplorePage() {
                         <MarkdownRenderer content={msg.content} />
                       )
                     ) : (
-                      <p className="text-sm leading-relaxed">{msg.content}</p>
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
                     )}
                   </div>
                 </div>
@@ -488,9 +495,9 @@ export default function ExplorePage() {
             ) : turnsLeft <= 0 && !showNewChat ? (
               <p className="text-center text-sm text-gray-400">대화 횟수를 모두 사용했습니다. 새 대화를 시작해주세요.</p>
             ) : (
-              <div className="flex items-center gap-3">
-                <input
-                  type="text"
+              <div className="flex items-start gap-3">
+                <textarea
+                  ref={inputRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
@@ -500,12 +507,13 @@ export default function ExplorePage() {
                       : '질문을 입력하세요...'
                   }
                   disabled={loading || typing}
-                  className="flex-1 rounded-2xl bg-gray-50 px-5 py-3 text-sm text-gray-700 outline-none transition focus:bg-white focus:ring-2 focus:ring-primary-200 disabled:opacity-50"
+                  rows={1}
+                  className="min-h-[44px] max-h-32 flex-1 resize-none overflow-y-auto rounded-2xl bg-gray-50 px-5 py-3 text-sm text-gray-700 outline-none transition focus:bg-white focus:ring-2 focus:ring-primary-200 disabled:opacity-50"
                 />
                 <button
                   onClick={handleSend}
                   disabled={loading || typing || !input.trim() || (showNewChat && !selectedConceptId)}
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary-500 text-white transition hover:bg-primary-400 disabled:opacity-40"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary-500 text-white transition hover:bg-primary-400 disabled:opacity-40 mt-0.5"
                 >
                   {loading ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
@@ -528,13 +536,18 @@ export default function ExplorePage() {
    ═══════════════════════════════════════════════════ */
 
 interface NewChatViewProps {
-  concepts: Array<{ id: string; name: string; description: string; level: number }>;
+  concepts: Array<{ id: string; name: string; description: string; level: number; domain?: string }>;
   selectedConceptId: string;
   onSelectConcept: (id: string) => void;
 }
 
 function NewChatView({ concepts, selectedConceptId, onSelectConcept }: NewChatViewProps) {
-  const levelGroups = concepts.reduce<Record<number, typeof concepts>>((acc, c) => {
+  const [activeDomain, setActiveDomain] = useState('javascript');
+
+  const conceptsByDomain = concepts.filter(
+    (c) => (c.domain ?? 'javascript') === activeDomain,
+  );
+  const levelGroups = conceptsByDomain.reduce<Record<number, typeof conceptsByDomain>>((acc, c) => {
     if (!acc[c.level]) acc[c.level] = [];
     acc[c.level].push(c);
     return acc;
@@ -562,8 +575,24 @@ function NewChatView({ concepts, selectedConceptId, onSelectConcept }: NewChatVi
         </p>
       </div>
 
+      <div className="mb-6">
+        <DomainTabs
+          activeId={activeDomain}
+          onChange={(id) => {
+            setActiveDomain(id);
+            onSelectConcept('');
+          }}
+        />
+      </div>
+
       <div className="space-y-4">
-        {Object.entries(levelGroups)
+        {conceptsByDomain.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-2xl bg-gray-50 py-16">
+            <Compass className="mb-3 h-10 w-10 text-gray-200" />
+            <p className="text-sm text-gray-400">이 도메인에 아직 개념이 없습니다</p>
+          </div>
+        ) : (
+          Object.entries(levelGroups)
           .sort(([a], [b]) => Number(a) - Number(b))
           .map(([level, group]) => (
             <div key={level}>
@@ -592,7 +621,8 @@ function NewChatView({ concepts, selectedConceptId, onSelectConcept }: NewChatVi
                 ))}
               </div>
             </div>
-          ))}
+          ))
+        )}
       </div>
     </div>
   );

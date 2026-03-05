@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { MessageCircle, Send, Loader2, ChevronUp } from 'lucide-react';
 import { sessionApi } from '@/lib/session-api';
+import { useAutoResizeTextarea } from '@/hooks/use-auto-resize-textarea';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { MarkdownRenderer } from './markdown-renderer';
 
@@ -128,6 +129,11 @@ export function DiscussionChat({
     }
   };
 
+  const { ref: inputRef } = useAutoResizeTextarea(input, {
+    minHeightPx: 40,
+    maxHeightPx: 112,
+  });
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -191,7 +197,7 @@ export function DiscussionChat({
                   <MarkdownRenderer content={msg.content} />
                 )
               ) : (
-                <p className="text-sm leading-relaxed">{msg.content}</p>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">{msg.content}</p>
               )}
             </div>
           </div>
@@ -215,20 +221,21 @@ export function DiscussionChat({
       {/* Input */}
       <div className="border-t border-gray-100 px-4 py-3">
         {remainingTurns > 0 ? (
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
+          <div className="flex items-start gap-2">
+            <textarea
+              ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="질문을 입력하세요..."
+              placeholder="질문을 입력하세요... (Shift+Enter: 줄바꿈)"
               disabled={loading || typing}
-              className="flex-1 rounded-xl bg-gray-50 px-4 py-2.5 text-sm text-gray-700 outline-none transition focus:bg-white focus:ring-2 focus:ring-primary-200 disabled:opacity-50"
+              rows={1}
+              className="min-h-[40px] max-h-28 flex-1 resize-none overflow-y-auto rounded-xl bg-gray-50 px-4 py-2.5 text-sm text-gray-700 outline-none transition focus:bg-white focus:ring-2 focus:ring-primary-200 disabled:opacity-50"
             />
             <button
               onClick={handleSend}
               disabled={loading || typing || !input.trim()}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-500 text-white transition hover:bg-primary-400 disabled:opacity-40"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-500 text-white transition hover:bg-primary-400 disabled:opacity-40 mt-0.5"
             >
               {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </button>
