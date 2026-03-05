@@ -16,12 +16,20 @@ export default function PricingPage() {
 
   const isPro = user?.planType === 'PRO' || user?.planType === 'MASTER';
 
+  // NEXT_PUBLIC: 빌드 시점에 적용되며, 프로덕션(Vercel 등)에서 결제 차단 시 사용
+  const envCheckoutEnabled =
+    process.env.NEXT_PUBLIC_BILLING_CHECKOUT_ENABLED !== 'false';
+
   useEffect(() => {
+    if (!envCheckoutEnabled) {
+      setCheckoutEnabled(false);
+      return;
+    }
     api
       .get<{ checkoutEnabled: boolean }>('/billing/status')
       .then(({ data }) => setCheckoutEnabled(data.checkoutEnabled))
       .catch(() => setCheckoutEnabled(true)); // 실패 시 기본값: 활성화 (기존 동작 유지)
-  }, []);
+  }, [envCheckoutEnabled]);
 
   const handleUpgrade = async () => {
     setLoading(true);
