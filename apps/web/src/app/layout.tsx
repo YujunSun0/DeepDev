@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Providers } from './providers';
 import { SITE_URL } from '@/lib/constants';
+import { Analytics } from '@vercel/analytics/react';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -57,7 +58,10 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className="min-h-screen bg-white text-gray-900">
-        <Providers>{children}</Providers>
+        <Providers>
+          {children}
+          <Analytics />
+        </Providers>
       </body>
     </html>
   );
