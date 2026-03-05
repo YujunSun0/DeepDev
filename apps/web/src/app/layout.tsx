@@ -24,6 +24,7 @@ export const metadata: Metadata = {
     '데이터베이스 학습',
     '네트워크 학습',
     '모바일 학습',
+    'DeepDev',
   ],
   openGraph: {
     type: 'website',
