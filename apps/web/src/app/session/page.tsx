@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { useConceptTree, useMasteries } from '@/hooks/use-api';
+import { useConceptTree, useMasteries, useSessions } from '@/hooks/use-api';
 import { useAuth } from '@/hooks/use-auth';
 import { DomainTabs } from '@/components/domain-tabs';
 import { UsageWarning } from '@/components/usage-warning';
@@ -43,6 +43,7 @@ export default function SessionPage() {
   const { user } = useAuth();
   const { data: concepts, isLoading } = useConceptTree();
   const { data: masteries } = useMasteries();
+  const { data: sessionsData } = useSessions();
   const [creating, setCreating] = useState<string | null>(null);
   const [error, setError] = useState('');
   const router = useRouter();
@@ -51,6 +52,28 @@ export default function SessionPage() {
   const masteryMap = new Map(
     masteries?.map((m) => [m.conceptId, m.masteryScore]) ?? [],
   );
+
+  const SESSION_STEP_LABELS: Record<string, string> = {
+    INIT: '시작 준비',
+    EXPLAINING: '개념 설명',
+    OBJECTIVE: '객관식',
+    SUBJECTIVE: '서술형',
+    APPLICATION: '응용',
+    SUMMARY: '요약',
+  };
+  const sessions = sessionsData?.items ?? [];
+  const inProgressSessions = sessions.filter((s) => s.state !== 'CLOSED');
+  const inProgressStepByConcept = new Map<string, string>();
+  const inProgressSessionIdByConcept = new Map<string, string>();
+  const sortedByCreated = [...inProgressSessions].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+  for (const s of sortedByCreated) {
+    if (!inProgressStepByConcept.has(s.conceptId)) {
+      inProgressStepByConcept.set(s.conceptId, s.state);
+      inProgressSessionIdByConcept.set(s.conceptId, s.id);
+    }
+  }
 
   const conceptsByDomain = (concepts ?? []).filter(
     (c) => (c as { domain?: string }).domain === activeDomain,
@@ -143,7 +166,7 @@ export default function SessionPage() {
                           <div key={concept.id} className="rounded-3xl bg-white p-5 shadow-sm transition hover:shadow-md">
                             <div className="mb-2 flex items-start justify-between">
                               <h3 className="font-semibold text-gray-800">{concept.name}</h3>
-                              {score !== undefined && (
+                              {score !== undefined ? (
                                 <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                                   score >= 80 ? 'bg-emerald-50 text-emerald-600'
                                     : score >= 50 ? 'bg-amber-50 text-amber-600'
@@ -151,17 +174,31 @@ export default function SessionPage() {
                                 }`}>
                                   {score.toFixed(0)}%
                                 </span>
-                              )}
+                              ) : (() => {
+                                const stepLabel = inProgressStepByConcept.get(concept.id);
+                                return stepLabel ? (
+                                  <span className="rounded-full bg-primary-50 px-2.5 py-0.5 text-xs font-semibold text-primary-600">
+                                    진행 중: {SESSION_STEP_LABELS[stepLabel] ?? stepLabel}
+                                  </span>
+                                ) : null;
+                              })()}
                             </div>
                             <p className="mb-4 text-sm leading-relaxed text-gray-400 line-clamp-2">
                               {concept.description}
                             </p>
                             <button
-                              onClick={() => handleStart(concept.id, concept.level)}
+                              onClick={() => {
+                                const sessionId = inProgressSessionIdByConcept.get(concept.id);
+                                if (sessionId) {
+                                  router.push(`/session/${sessionId}`);
+                                } else {
+                                  handleStart(concept.id, concept.level);
+                                }
+                              }}
                               disabled={isCreating}
                               className="w-full rounded-2xl bg-primary-50 py-2.5 text-sm font-semibold text-primary-600 transition hover:bg-primary-100 disabled:opacity-50"
                             >
-                              {isCreating ? '생성 중...' : '세션 시작하기'}
+                              {isCreating ? '생성 중...' : inProgressStepByConcept.has(concept.id) ? '이어서 학습하기' : '세션 시작하기'}
                             </button>
                           </div>
                         );

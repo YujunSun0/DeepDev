@@ -113,10 +113,29 @@ export default function SessionPlayPage() {
   const [applicationAnswer, setApplicationAnswer] = useState('');
   const [applicationResult, setApplicationResult] = useState<ApplicationAnswerResult | null>(null);
   const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
+  const [viewingStep, setViewingStep] = useState<typeof STEP_ORDER[number] | null>(null);
 
   /* Load session info & restore state */
   useEffect(() => {
     if (!id) return;
+
+    // 세션 ID 변경 시 즉시 state 초기화 (이전 세션 내용 깜빡임 방지)
+    setStep('loading');
+    setSession(null);
+    setViewingStep(null);
+    setExplanation(null);
+    setObjectiveQ(null);
+    setObjectiveResult(null);
+    setSelectedOption('');
+    setSubjectiveQ('');
+    setSubjectiveAnswer('');
+    setSubjectiveResult(null);
+    setApplicationQ('');
+    setApplicationAnswer('');
+    setApplicationResult(null);
+    setSummaryData(null);
+    setError('');
+
     api.get<SessionInfo>(`/sessions/${id}`).then(({ data }) => {
       setSession(data);
       const ctx = data.context;
@@ -414,20 +433,27 @@ export default function SessionPlayPage() {
         {/* ── Step Indicator ── */}
         <div className="mb-8 flex items-center gap-1">
           {STEP_ORDER.map((s, i) => {
-            const done = i < currentStepIndex;
-            const active = i === currentStepIndex;
+            const done = i < currentStepIndex || (i === currentStepIndex && step.endsWith('-result'));
+            const active = i === currentStepIndex && !step.endsWith('-result');
+            const isViewing = viewingStep === s;
+            const canView = done && step !== 'loading';
             return (
               <div key={s} className="flex flex-1 items-center gap-1">
-                <div className="flex flex-1 flex-col items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => canView && setViewingStep(s)}
+                  disabled={!canView}
+                  className={`flex flex-1 flex-col items-center gap-1.5 transition ${canView ? 'cursor-pointer hover:opacity-80' : 'cursor-default'}`}
+                >
                   <div className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition ${
                     done ? 'bg-primary-500 text-white' : active ? 'bg-primary-100 text-primary-600 ring-2 ring-primary-300' : 'bg-gray-100 text-gray-300'
-                  }`}>
+                  } ${isViewing ? 'ring-2 ring-primary-400 ring-offset-2' : ''}`}>
                     {done ? <CheckCircle2 className="h-4 w-4" /> : i + 1}
                   </div>
                   <span className={`text-[10px] font-medium ${active ? 'text-primary-600' : done ? 'text-gray-500' : 'text-gray-300'}`}>
                     {STEP_LABELS[s]}
                   </span>
-                </div>
+                </button>
                 {i < STEP_ORDER.length - 1 && (
                   <div className={`mt-[-16px] h-0.5 flex-1 rounded ${done ? 'bg-primary-400' : 'bg-gray-100'}`} />
                 )}
@@ -441,8 +467,201 @@ export default function SessionPlayPage() {
           <ErrorMessage message={error} onDismiss={() => setError('')} className="mb-6" />
         )}
 
+        {/* ── 이전 단계 보기 (View Mode) ── */}
+        {viewingStep && (
+          <div className="mb-6 space-y-4">
+            <div className="flex items-center justify-between rounded-2xl bg-primary-50 px-4 py-2">
+              <span className="text-sm font-medium text-primary-700">
+                이전 단계: {STEP_LABELS[viewingStep]}
+              </span>
+              <button
+                onClick={() => setViewingStep(null)}
+                className="rounded-xl bg-primary-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-primary-400"
+              >
+                현재 단계로 돌아가기
+              </button>
+            </div>
+
+            {viewingStep === 'explain' && explanation && (
+              <div className="space-y-5 rounded-3xl bg-white p-6 shadow-sm">
+                <div className="mb-4 flex items-center gap-2">
+                  <BookOpen className="h-5 w-5 text-primary-500" />
+                  <h2 className="text-lg font-bold text-gray-900">개념 설명</h2>
+                </div>
+                <MarkdownRenderer content={explanation.explanation} />
+                {explanation.keyPoints.length > 0 && (
+                  <>
+                    <h3 className="flex items-center gap-2 text-sm font-bold text-gray-800">
+                      <Lightbulb className="h-4 w-4 text-amber-400" /> 핵심 포인트
+                    </h3>
+                    <ul className="space-y-2">
+                      {explanation.keyPoints.map((point, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm text-gray-600">
+                          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-50 text-[10px] font-bold text-amber-500">{i + 1}</span>
+                          {point}
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+                {explanation.codeExample && (
+                  <>
+                    <h3 className="flex items-center gap-2 text-sm font-bold text-gray-800">
+                      <Code className="h-4 w-4 text-violet-400" /> 코드 예시
+                    </h3>
+                    <MarkdownRenderer content={`\`\`\`javascript\n${explanation.codeExample}\n\`\`\``} />
+                  </>
+                )}
+              </div>
+            )}
+
+            {viewingStep === 'objective' && objectiveQ && (
+              <div className="space-y-5 rounded-3xl bg-white p-6 shadow-sm">
+                <div className="mb-4 flex items-center gap-2">
+                  <Circle className="h-5 w-5 text-blue-500" />
+                  <h2 className="text-lg font-bold text-gray-900">객관식 문제</h2>
+                </div>
+                <MarkdownRenderer content={objectiveQ.question} />
+                <div className="space-y-2.5">
+                  {objectiveQ.options.map((opt) => {
+                    const letter = opt.charAt(0);
+                    const isSelected = selectedOption === letter;
+                    const isCorrect = objectiveResult?.correctAnswer?.toUpperCase() === letter.toUpperCase();
+                    return (
+                      <div
+                        key={opt}
+                        className={`flex w-full items-center gap-3 rounded-2xl border-2 px-4 py-3.5 text-left text-sm ${
+                          isSelected ? 'border-primary-400 bg-primary-50' : 'border-gray-100 bg-gray-50'
+                        } ${objectiveResult && isCorrect ? 'ring-2 ring-emerald-300' : ''}`}
+                      >
+                        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${
+                          isSelected ? 'bg-primary-500 text-white' : 'bg-gray-200 text-gray-500'
+                        }`}>
+                          {letter}
+                        </span>
+                        {opt.slice(2).trim()}
+                        {objectiveResult && isCorrect && <CheckCircle2 className="ml-auto h-4 w-4 text-emerald-500" />}
+                      </div>
+                    );
+                  })}
+                </div>
+                {objectiveResult && (
+                  <div className={`rounded-2xl p-4 ${objectiveResult.isCorrect ? 'bg-emerald-50' : 'bg-red-50'}`}>
+                    <p className="mb-2 text-sm font-semibold">
+                      {objectiveResult.isCorrect ? '정답' : '오답'} · {objectiveResult.score}점
+                    </p>
+                    <MarkdownRenderer content={objectiveResult.feedback} />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {viewingStep === 'subjective' && subjectiveQ && (
+              <div className="space-y-5 rounded-3xl bg-white p-6 shadow-sm">
+                <div className="mb-4 flex items-center gap-2">
+                  <BookOpen className="h-5 w-5 text-violet-500" />
+                  <h2 className="text-lg font-bold text-gray-900">서술형 문제</h2>
+                </div>
+                <MarkdownRenderer content={subjectiveQ} />
+                {subjectiveAnswer && (
+                  <>
+                    <h3 className="text-sm font-bold text-gray-700">내 답변</h3>
+                    <div className="rounded-2xl bg-gray-50 p-4 text-sm text-gray-600 whitespace-pre-wrap">
+                      {subjectiveAnswer}
+                    </div>
+                  </>
+                )}
+                {subjectiveResult && (
+                  <div className={`rounded-2xl p-4 ${getScoreBg(subjectiveResult.score)}`}>
+                    <p className="mb-2 text-sm font-semibold">{subjectiveResult.score}점</p>
+                    <MarkdownRenderer content={subjectiveResult.feedback} />
+                    {subjectiveResult.strengths.length > 0 && (
+                      <ul className="mt-2 space-y-1 text-sm text-emerald-700">
+                        {subjectiveResult.strengths.map((s, i) => (
+                          <li key={i} className="flex items-start gap-1.5">
+                            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {s}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {subjectiveResult.improvements.length > 0 && (
+                      <ul className="mt-2 space-y-1 text-sm text-amber-700">
+                        {subjectiveResult.improvements.map((s, i) => (
+                          <li key={i} className="flex items-start gap-1.5">
+                            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {s}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {viewingStep === 'application' && applicationQ && (
+              <div className="space-y-5 rounded-3xl bg-white p-6 shadow-sm">
+                <div className="mb-4 flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-orange-500" />
+                  <h2 className="text-lg font-bold text-gray-900">응용 문제</h2>
+                </div>
+                <MarkdownRenderer content={applicationQ} />
+                {applicationAnswer && (
+                  <>
+                    <h3 className="text-sm font-bold text-gray-700">내 코드</h3>
+                    <div className="overflow-x-auto rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                      <pre className="m-0 text-sm text-gray-700 whitespace-pre-wrap font-mono">
+                        <code>{applicationAnswer}</code>
+                      </pre>
+                    </div>
+                  </>
+                )}
+                {applicationResult && (
+                  <div className={`rounded-2xl p-4 ${getScoreBg(applicationResult.score)}`}>
+                    <p className="mb-2 text-sm font-semibold">{applicationResult.score}점</p>
+                    <MarkdownRenderer content={applicationResult.feedback} />
+                    {applicationResult.strengths.length > 0 && (
+                      <ul className="mt-2 space-y-1 text-sm text-emerald-700">
+                        {applicationResult.strengths.map((s, i) => (
+                          <li key={i} className="flex items-start gap-1.5">
+                            <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {s}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {applicationResult.improvements.length > 0 && (
+                      <ul className="mt-2 space-y-1 text-sm text-amber-700">
+                        {applicationResult.improvements.map((s, i) => (
+                          <li key={i} className="flex items-start gap-1.5">
+                            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {s}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {viewingStep === 'summary' && summaryData && (
+              <div className="space-y-5">
+                <div className="rounded-3xl bg-gradient-to-br from-primary-500 to-violet-500 p-6 text-white shadow-lg">
+                  <p className="text-sm text-white/70">종합 점수</p>
+                  <p className="text-5xl font-extrabold">{summaryData.totalScore.toFixed(1)}</p>
+                  <span className="mt-2 inline-block rounded-full bg-white/20 px-3 py-1 text-xs font-semibold">
+                    {summaryData.summary.masteryLevel}
+                  </span>
+                </div>
+                <div className="rounded-3xl bg-white p-6 shadow-sm">
+                  <h3 className="mb-3 text-sm font-bold text-gray-800">종합 평가</h3>
+                  <MarkdownRenderer content={summaryData.summary.overallAssessment} />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* ── Loading ── */}
-        {step === 'loading' && !error && (
+        {!viewingStep && step === 'loading' && !error && (
           <div className="flex flex-col items-center justify-center gap-4 py-20">
             <div className="relative">
               <div className="h-16 w-16 animate-spin rounded-full border-4 border-primary-100 border-t-primary-500" />
@@ -455,7 +674,7 @@ export default function SessionPlayPage() {
         {/* ════════════════════════════════════════ */}
         {/* STEP 1: Explanation                      */}
         {/* ════════════════════════════════════════ */}
-        {step === 'explain' && explanation && (
+        {!viewingStep && step === 'explain' && explanation && (
           <div className="space-y-5">
             <div className="rounded-3xl bg-white p-6 shadow-sm">
               <div className="mb-4 flex items-center gap-2">
@@ -512,7 +731,7 @@ export default function SessionPlayPage() {
         {/* ════════════════════════════════════════ */}
         {/* STEP 2: Objective Question               */}
         {/* ════════════════════════════════════════ */}
-        {step === 'objective' && objectiveQ && (
+        {!viewingStep && step === 'objective' && objectiveQ && (
           <div className="space-y-5">
             <div className="rounded-3xl bg-white p-6 shadow-sm">
               <div className="mb-4 flex items-center gap-2">
@@ -560,7 +779,7 @@ export default function SessionPlayPage() {
         )}
 
         {/* ── Objective Result ── */}
-        {step === 'objective-result' && objectiveResult && (
+        {!viewingStep && step === 'objective-result' && objectiveResult && (
           <div className="space-y-5">
             <div className={`rounded-3xl p-6 shadow-sm ${objectiveResult.isCorrect ? 'bg-emerald-50' : 'bg-red-50'}`}>
               <div className="mb-3 flex items-center gap-2">
@@ -598,7 +817,7 @@ export default function SessionPlayPage() {
         {/* ════════════════════════════════════════ */}
         {/* STEP 3: Subjective Question              */}
         {/* ════════════════════════════════════════ */}
-        {step === 'subjective' && (
+        {!viewingStep && step === 'subjective' && (
           <div className="space-y-5">
             <div className="rounded-3xl bg-white p-6 shadow-sm">
               <div className="mb-4 flex items-center gap-2">
@@ -630,7 +849,7 @@ export default function SessionPlayPage() {
         )}
 
         {/* ── Subjective Result ── */}
-        {step === 'subjective-result' && subjectiveResult && (
+        {!viewingStep && step === 'subjective-result' && subjectiveResult && (
           <div className="space-y-5">
             <div className={`rounded-3xl p-6 shadow-sm ${getScoreBg(subjectiveResult.score)}`}>
               <div className="mb-3 flex items-center justify-between">
@@ -710,7 +929,7 @@ export default function SessionPlayPage() {
         {/* ════════════════════════════════════════ */}
         {/* STEP 4: Application Question             */}
         {/* ════════════════════════════════════════ */}
-        {step === 'application' && (
+        {!viewingStep && step === 'application' && (
           <div className="space-y-5">
             <div className="rounded-3xl bg-white p-6 shadow-sm">
               <div className="mb-4 flex items-center gap-2">
@@ -741,7 +960,7 @@ export default function SessionPlayPage() {
         )}
 
         {/* ── Application Result ── */}
-        {step === 'application-result' && applicationResult && (
+        {!viewingStep && step === 'application-result' && applicationResult && (
           <div className="space-y-5">
             <div className={`rounded-3xl p-6 shadow-sm ${getScoreBg(applicationResult.score)}`}>
               <div className="mb-3 flex items-center justify-between">
@@ -821,7 +1040,7 @@ export default function SessionPlayPage() {
         {/* ════════════════════════════════════════ */}
         {/* STEP 5: Summary                          */}
         {/* ════════════════════════════════════════ */}
-        {step === 'summary' && summaryData && (
+        {!viewingStep && step === 'summary' && summaryData && (
           <div className="space-y-5">
             {/* Score Overview */}
             <div className="rounded-3xl bg-gradient-to-br from-primary-500 to-violet-500 p-6 text-white shadow-lg shadow-primary-200">

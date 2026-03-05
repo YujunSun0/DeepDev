@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Trophy, Flame, BookOpen, TrendingUp,
   Braces, Box, ScanSearch, FunctionSquare, Layers,
@@ -158,7 +158,18 @@ const levelMetaCS: Record<number, { label: string; color: string; bg: string }> 
 /* ───── page ───── */
 
 export default function DashboardPage() {
-  const [activeDomain, setActiveDomain] = useState('javascript');
+  const searchParams = useSearchParams();
+  const domainFromUrl = searchParams.get('domain');
+  const VALID_DOMAINS = ['javascript', 'dsa', 'os-network', 'react'];
+  const [activeDomain, setActiveDomain] = useState(
+    domainFromUrl && VALID_DOMAINS.includes(domainFromUrl) ? domainFromUrl : 'javascript',
+  );
+
+  useEffect(() => {
+    if (domainFromUrl && VALID_DOMAINS.includes(domainFromUrl) && domainFromUrl !== activeDomain) {
+      setActiveDomain(domainFromUrl);
+    }
+  }, [domainFromUrl, activeDomain]);
   const [sessionStartModalOpen, setSessionStartModalOpen] = useState(false);
   const [selectedConcept, setSelectedConcept] = useState<{ id: string; name: string; level: number } | null>(null);
   const [creating, setCreating] = useState(false);
@@ -202,6 +213,23 @@ export default function DashboardPage() {
   const closedSessions = sessions.filter(s => s.state === 'CLOSED');
   const chartSessions = closedSessionsData?.items ?? [];
   const inProgressSessions = sessions.filter(s => s.state !== 'CLOSED');
+  const SESSION_STEP_LABELS: Record<string, string> = {
+    INIT: '시작 준비',
+    EXPLAINING: '개념 설명',
+    OBJECTIVE: '객관식',
+    SUBJECTIVE: '서술형',
+    APPLICATION: '응용',
+    SUMMARY: '요약',
+  };
+  const inProgressStepByConcept = new Map<string, string>();
+  const sortedByCreated = [...inProgressSessions].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+  );
+  for (const s of sortedByCreated) {
+    if (!inProgressStepByConcept.has(s.conceptId)) {
+      inProgressStepByConcept.set(s.conceptId, s.state);
+    }
+  }
   const totalConcepts = concepts?.length ?? 0;
   const progressPercent = totalConcepts > 0
     ? Math.round(((masteries?.length ?? 0) / totalConcepts) * 100)
@@ -219,6 +247,11 @@ export default function DashboardPage() {
 
   const handleConceptClick = (concept: { id: string; name: string; level: number }) => {
     if (concept.level > maxLevel) return;
+    const existingSession = inProgressSessions.find((s) => s.conceptId === concept.id);
+    if (existingSession) {
+      router.push(`/session/${existingSession.id}`);
+      return;
+    }
     setSelectedConcept(concept);
     setSessionStartError('');
     setSessionStartModalOpen(true);
@@ -265,7 +298,13 @@ export default function DashboardPage() {
         <div className="mb-8">
           <h1 className="mb-1 text-2xl font-bold text-gray-900">대시보드</h1>
           <p className="mb-5 text-sm text-gray-400">학습 현황을 한눈에 확인하세요</p>
-          <DomainTabs activeId={activeDomain} onChange={setActiveDomain} />
+          <DomainTabs
+            activeId={activeDomain}
+            onChange={(id) => {
+              setActiveDomain(id);
+              router.replace(`/dashboard?domain=${id}`);
+            }}
+          />
         </div>
 
         <div className="mb-6">
@@ -429,9 +468,16 @@ export default function DashboardPage() {
                                     </div>
                                     <span className="shrink-0 text-xs font-semibold text-gray-500">{score.toFixed(0)}%</span>
                                   </div>
-                                ) : (
-                                  <p className="mt-0.5 text-xs text-gray-300">미학습</p>
-                                )}
+                                ) : (() => {
+                                  const stepLabel = inProgressStepByConcept.get(concept.id);
+                                  return (
+                                    <p className="mt-0.5 text-xs text-gray-500">
+                                      {stepLabel
+                                        ? `진행 중: ${SESSION_STEP_LABELS[stepLabel] ?? stepLabel}`
+                                        : '미학습'}
+                                    </p>
+                                  );
+                                })()}
                               </div>
                               {locked ? (
                                 <LockIcon className="h-4 w-4 shrink-0 text-gray-300" />
