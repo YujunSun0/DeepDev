@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import * as authLib from '@/lib/auth';
 
 interface AuthUser {
@@ -37,6 +38,7 @@ export function useAuthProvider(): AuthContextValue {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     const savedUser = authLib.getSavedUser();
@@ -66,9 +68,10 @@ export function useAuthProvider(): AuthContextValue {
 
   const logout = useCallback(() => {
     authLib.logout();
+    queryClient.clear();
     setUser(null);
     router.push('/login');
-  }, [router]);
+  }, [router, queryClient]);
 
   const refreshUser = useCallback(async () => {
     const updated = await authLib.refreshUser();
