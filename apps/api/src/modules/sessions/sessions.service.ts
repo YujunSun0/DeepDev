@@ -100,7 +100,7 @@ export class SessionsService {
     if (!allowed) throw new ForbiddenException(reason);
 
     const concept = await this.concepts.findById(conceptId);
-    if (!concept) throw new NotFoundException('Concept not found');
+    if (!concept) throw new NotFoundException('개념을 찾을 수 없습니다');
 
     return this.prisma.session.create({
       data: {
@@ -120,7 +120,7 @@ export class SessionsService {
       where: { id },
       include: { concept: true },
     });
-    if (!session) throw new NotFoundException('Session not found');
+    if (!session) throw new NotFoundException('세션을 찾을 수 없습니다');
     return session;
   }
 
@@ -148,7 +148,7 @@ export class SessionsService {
 
   async startSession(sessionId: string, userId: string) {
     const session = await this.findById(sessionId);
-    if (session.userId !== userId) throw new BadRequestException('Not your session');
+    if (session.userId !== userId) throw new BadRequestException('권한이 없습니다');
 
     if (session.state !== STATES.INIT) {
       const ctx = (session.context as SessionContext) ?? {};
@@ -181,14 +181,14 @@ export class SessionsService {
 
   async getObjectiveQuestion(sessionId: string, userId: string) {
     const session = await this.findById(sessionId);
-    if (session.userId !== userId) throw new BadRequestException('Not your session');
+    if (session.userId !== userId) throw new BadRequestException('권한이 없습니다');
 
     if (session.state === STATES.OBJECTIVE && (session.context as SessionContext)?.objective) {
       const ctx = session.context as SessionContext;
       return { state: STATES.OBJECTIVE, question: ctx.objective!.question, options: ctx.objective!.options };
     }
 
-    if (session.state !== STATES.EXPLAINING) throw new BadRequestException('Not in correct state');
+    if (session.state !== STATES.EXPLAINING) throw new BadRequestException('올바른 상태가 아닙니다');
 
     const ctx = (session.context as SessionContext) ?? {};
     const prompt = BASIC_QUESTION_PROMPT(
@@ -221,8 +221,8 @@ export class SessionsService {
 
   async submitObjectiveAnswer(sessionId: string, userId: string, answer: string) {
     const session = await this.findById(sessionId);
-    if (session.userId !== userId) throw new BadRequestException('Not your session');
-    if (session.state !== STATES.OBJECTIVE) throw new BadRequestException('Not in correct state');
+    if (session.userId !== userId) throw new BadRequestException('권한이 없습니다');
+    if (session.state !== STATES.OBJECTIVE) throw new BadRequestException('올바른 상태가 아닙니다');
 
     const ctx = (session.context as SessionContext) ?? {};
     const obj = ctx.objective!;
@@ -255,14 +255,14 @@ export class SessionsService {
 
   async getSubjectiveQuestion(sessionId: string, userId: string) {
     const session = await this.findById(sessionId);
-    if (session.userId !== userId) throw new BadRequestException('Not your session');
+    if (session.userId !== userId) throw new BadRequestException('권한이 없습니다');
 
     if (session.state === STATES.SUBJECTIVE && (session.context as SessionContext)?.subjective) {
       const ctx = session.context as SessionContext;
       return { state: STATES.SUBJECTIVE, question: ctx.subjective!.question };
     }
 
-    if (session.state !== STATES.OBJECTIVE) throw new BadRequestException('Not in correct state');
+    if (session.state !== STATES.OBJECTIVE) throw new BadRequestException('올바른 상태가 아닙니다');
 
     const prompt = SUBJECTIVE_QUESTION_PROMPT(
       session.concept.name,
@@ -293,8 +293,8 @@ export class SessionsService {
 
   async submitSubjectiveAnswer(sessionId: string, userId: string, answer: string) {
     const session = await this.findById(sessionId);
-    if (session.userId !== userId) throw new BadRequestException('Not your session');
-    if (session.state !== STATES.SUBJECTIVE) throw new BadRequestException('Not in correct state');
+    if (session.userId !== userId) throw new BadRequestException('권한이 없습니다');
+    if (session.state !== STATES.SUBJECTIVE) throw new BadRequestException('올바른 상태가 아닙니다');
 
     const ctx = (session.context as SessionContext) ?? {};
     const sub = ctx.subjective!;
@@ -343,14 +343,14 @@ export class SessionsService {
 
   async getApplicationQuestion(sessionId: string, userId: string) {
     const session = await this.findById(sessionId);
-    if (session.userId !== userId) throw new BadRequestException('Not your session');
+    if (session.userId !== userId) throw new BadRequestException('권한이 없습니다');
 
     if (session.state === STATES.APPLICATION && (session.context as SessionContext)?.application) {
       const ctx = session.context as SessionContext;
       return { state: STATES.APPLICATION, question: ctx.application!.question };
     }
 
-    if (session.state !== STATES.SUBJECTIVE) throw new BadRequestException('Not in correct state');
+    if (session.state !== STATES.SUBJECTIVE) throw new BadRequestException('올바른 상태가 아닙니다');
 
     const ctx = (session.context as SessionContext) ?? {};
     const prompt = APPLICATION_QUESTION_PROMPT(
@@ -385,8 +385,8 @@ export class SessionsService {
 
   async submitApplicationAnswer(sessionId: string, userId: string, answer: string) {
     const session = await this.findById(sessionId);
-    if (session.userId !== userId) throw new BadRequestException('Not your session');
-    if (session.state !== STATES.APPLICATION) throw new BadRequestException('Not in correct state');
+    if (session.userId !== userId) throw new BadRequestException('권한이 없습니다');
+    if (session.state !== STATES.APPLICATION) throw new BadRequestException('올바른 상태가 아닙니다');
 
     const ctx = (session.context as SessionContext) ?? {};
     const app = ctx.application!;
@@ -436,7 +436,7 @@ export class SessionsService {
 
   async getSessionSummary(sessionId: string, userId: string) {
     const session = await this.findById(sessionId);
-    if (session.userId !== userId) throw new BadRequestException('Not your session');
+    if (session.userId !== userId) throw new BadRequestException('권한이 없습니다');
 
     if (session.state === STATES.CLOSED && (session.context as SessionContext)?.summary) {
       const ctx = session.context as SessionContext;
@@ -449,7 +449,7 @@ export class SessionsService {
       return { state: STATES.CLOSED, scores, totalScore, summary: ctx.summary };
     }
 
-    if (session.state !== STATES.APPLICATION) throw new BadRequestException('Not in correct state');
+    if (session.state !== STATES.APPLICATION) throw new BadRequestException('올바른 상태가 아닙니다');
 
     const ctx = (session.context as SessionContext) ?? {};
     const scores = {
@@ -501,7 +501,7 @@ export class SessionsService {
 
   async reEvaluate(sessionId: string, userId: string, stepType: 'subjective' | 'application') {
     const session = await this.findById(sessionId);
-    if (session.userId !== userId) throw new BadRequestException('Not your session');
+    if (session.userId !== userId) throw new BadRequestException('권한이 없습니다');
 
     const ctx = (session.context as SessionContext) ?? {};
     const stepData = ctx[stepType];
@@ -569,7 +569,7 @@ export class SessionsService {
     message: string,
   ) {
     const session = await this.findById(sessionId);
-    if (session.userId !== userId) throw new BadRequestException('Not your session');
+    if (session.userId !== userId) throw new BadRequestException('권한이 없습니다');
 
     const ctx = (session.context as SessionContext) ?? {};
     const stepData = stepType === 'explanation' ? ctx.explanation : ctx[stepType];

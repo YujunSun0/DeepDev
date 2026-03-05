@@ -21,7 +21,7 @@ export class AuthService {
   async register(dto: RegisterRequestDto) {
     const existing = await this.usersService.findByEmail(dto.email);
     if (existing) {
-      throw new ConflictException('Email already registered');
+      throw new ConflictException('이미 등록된 이메일입니다');
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
@@ -60,7 +60,7 @@ export class AuthService {
   async login(dto: LoginRequestDto) {
     const user = await this.usersService.findByEmail(dto.email);
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('이메일 또는 비밀번호가 올바르지 않습니다');
     }
 
     const isPasswordValid = await bcrypt.compare(
@@ -68,7 +68,7 @@ export class AuthService {
       user.passwordHash,
     );
     if (!isPasswordValid) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('이메일 또는 비밀번호가 올바르지 않습니다');
     }
 
     if (!user.emailVerified && this.emailService.enabled) {
@@ -97,12 +97,12 @@ export class AuthService {
         purpose: string;
       }>(token);
       if (payload.purpose !== 'email-verify') {
-        throw new BadRequestException('Invalid token');
+        throw new BadRequestException('유효하지 않은 토큰입니다');
       }
       await this.usersService.setEmailVerified(payload.sub);
       const user = await this.usersService.findById(payload.sub);
       if (!user) {
-        throw new BadRequestException('User not found');
+        throw new BadRequestException('사용자를 찾을 수 없습니다');
       }
       const accessToken = this.generateToken(user.id, user.email);
       return {

@@ -107,7 +107,7 @@ export class BillingService {
 
     if (!this.verifySignature(rawBody, signature)) {
       this.logger.warn('Invalid webhook signature - check LEMONSQUEEZY_SIGNING_SECRET');
-      throw new BadRequestException('Invalid signature');
+      throw new BadRequestException('유효하지 않은 서명입니다');
     }
 
     const payload: LsWebhookPayload = JSON.parse(rawBody.toString());
