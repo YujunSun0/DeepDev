@@ -39,6 +39,7 @@ model Concept {
   name            String   @unique
   description     String
   level           Int
+  domain          String   @default("javascript") @db.VarChar(32)
   prerequisiteIds Json     @default("[]") @map("prerequisite_ids")
   masteryWeight   Float    @default(1.0) @map("mastery_weight")
   createdAt       DateTime @default(now()) @map("created_at")

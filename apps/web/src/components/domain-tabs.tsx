@@ -1,8 +1,7 @@
 'use client';
 
 import { SiJavascript, SiReact } from 'react-icons/si';
-import { HiOutlineAcademicCap } from 'react-icons/hi2';
-import { HiOutlineServerStack } from 'react-icons/hi2';
+import { HiOutlineAcademicCap, HiOutlineCircleStack, HiOutlineServerStack } from 'react-icons/hi2';
 
 interface Domain {
   id: string;
@@ -21,22 +20,29 @@ const domains: Domain[] = [
     iconColor: 'text-yellow-400',
   },
   {
-    id: 'cs-fundamentals',
-    name: 'CS 기초',
-    available: false,
+    id: 'dsa',
+    name: '자료구조 & 알고리즘',
+    available: true,
     icon: <HiOutlineAcademicCap className="h-4 w-4" />,
     iconColor: 'text-blue-400',
   },
   {
-    id: 'backend',
-    name: 'Backend',
-    available: false,
+    id: 'os-network',
+    name: 'OS & 네트워크',
+    available: true,
     icon: <HiOutlineServerStack className="h-4 w-4" />,
     iconColor: 'text-green-400',
   },
   {
-    id: 'react-internals',
-    name: 'React 내부 동작',
+    id: 'database',
+    name: '데이터베이스',
+    available: false,
+    icon: <HiOutlineCircleStack className="h-4 w-4" />,
+    iconColor: 'text-emerald-400',
+  },
+  {
+    id: 'react',
+    name: 'React',
     available: false,
     icon: <SiReact className="h-4 w-4" />,
     iconColor: 'text-cyan-400',

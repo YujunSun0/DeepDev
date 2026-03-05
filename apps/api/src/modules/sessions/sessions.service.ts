@@ -9,6 +9,7 @@ import {
   BASIC_QUESTION_PROMPT,
   SUBJECTIVE_QUESTION_PROMPT,
   APPLICATION_QUESTION_PROMPT,
+  APPLICATION_QUESTION_PROMPT_CS,
   EVALUATE_SUBJECTIVE_PROMPT,
   EVALUATE_APPLICATION_PROMPT,
   SESSION_SUMMARY_PROMPT,
@@ -353,14 +354,15 @@ export class SessionsService {
     if (session.state !== STATES.SUBJECTIVE) throw new BadRequestException('올바른 상태가 아닙니다');
 
     const ctx = (session.context as SessionContext) ?? {};
-    const prompt = APPLICATION_QUESTION_PROMPT(
-      session.concept.name,
-      session.level,
-      {
-        objective: ctx.objective?.score ?? 0,
-        subjective: ctx.subjective?.score ?? 0,
-      },
-    );
+    const domain = (session.concept as { domain?: string }).domain ?? 'javascript';
+    const previousScores = {
+      objective: ctx.objective?.score ?? 0,
+      subjective: ctx.subjective?.score ?? 0,
+    };
+    const useCsPrompt = domain !== 'javascript' && domain !== 'react';
+    const prompt = useCsPrompt
+      ? APPLICATION_QUESTION_PROMPT_CS(session.concept.name, session.level, previousScores)
+      : APPLICATION_QUESTION_PROMPT(session.concept.name, session.level, previousScores);
 
     const { content, tokensUsed } = await this.llm.chat(prompt);
     const question = this.llm.parseJson<ApplicationResult>(content);

@@ -9,6 +9,7 @@ import {
   Cpu, ArrowUpDown, Lock as LockIcon, Pointer,
   Globe, Repeat, Timer, Workflow, Zap,
   ChevronRight, Sparkles, Target, AlertTriangle, Info,
+  Hash, LayoutList, GitBranch, Binary, Network, BarChart3,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useGSI, useConceptTree, useWeakConcepts, useSessions, useMasteries } from '@/hooks/use-api';
@@ -81,6 +82,31 @@ const conceptIcons: Record<string, React.ReactNode> = {
   'Task vs Microtask': <Timer className="h-4 w-4" />,
   'Promise 내부 동작': <Globe className="h-4 w-4" />,
   'async/await 동작 원리': <Zap className="h-4 w-4" />,
+  // CS 기초
+  '배열 (Array)': <LayoutList className="h-4 w-4" />,
+  '스택 (Stack)': <Layers className="h-4 w-4" />,
+  '큐 (Queue)': <LayoutList className="h-4 w-4" />,
+  '연결 리스트 (Linked List)': <GitBranch className="h-4 w-4" />,
+  'Big O 표기법': <BarChart3 className="h-4 w-4" />,
+  '해시 테이블 기초': <Hash className="h-4 w-4" />,
+  '해시 충돌 해결': <Hash className="h-4 w-4" />,
+  '트리 기초': <GitBranch className="h-4 w-4" />,
+  '그래프 기초': <Network className="h-4 w-4" />,
+  '정렬 알고리즘': <BarChart3 className="h-4 w-4" />,
+  '이진 탐색': <Binary className="h-4 w-4" />,
+  '시간·공간 복잡도 분석': <BarChart3 className="h-4 w-4" />,
+  // OS & 네트워크
+  '프로세스 vs 스레드': <Cpu className="h-4 w-4" />,
+  '메모리 관리 기초': <Layers className="h-4 w-4" />,
+  'TCP/IP 기초': <Network className="h-4 w-4" />,
+  'CPU 스케줄링': <Timer className="h-4 w-4" />,
+  '동기화 (뮤텍스, 세마포어)': <LockIcon className="h-4 w-4" />,
+  'HTTP/HTTPS': <Globe className="h-4 w-4" />,
+  'REST API': <Globe className="h-4 w-4" />,
+  '데드락': <LockIcon className="h-4 w-4" />,
+  '가상 메모리': <Layers className="h-4 w-4" />,
+  'DNS': <Network className="h-4 w-4" />,
+  '웹소켓': <Repeat className="h-4 w-4" />,
 };
 
 function InfoTooltip({ text }: { text: string }) {
@@ -103,6 +129,14 @@ const levelMeta: Record<number, { label: string; color: string; bg: string }> = 
   3: { label: '비동기 심화', color: 'text-orange-600', bg: 'bg-orange-50' },
   4: { label: '내부 메커니즘', color: 'text-rose-600', bg: 'bg-rose-50' },
   5: { label: '실전 사고력', color: 'text-emerald-600', bg: 'bg-emerald-50' },
+};
+
+const levelMetaCS: Record<number, { label: string; color: string; bg: string }> = {
+  1: { label: '기초', color: 'text-blue-600', bg: 'bg-blue-50' },
+  2: { label: '중급', color: 'text-violet-600', bg: 'bg-violet-50' },
+  3: { label: '심화', color: 'text-orange-600', bg: 'bg-orange-50' },
+  4: { label: '심화', color: 'text-rose-600', bg: 'bg-rose-50' },
+  5: { label: '심화', color: 'text-emerald-600', bg: 'bg-emerald-50' },
 };
 
 /* ───── page ───── */
@@ -134,13 +168,16 @@ export default function DashboardPage() {
     masteries?.map((m) => [m.conceptId, m.masteryScore]) ?? [],
   );
 
-  const levelGroups = concepts?.reduce(
+  const conceptsByDomain = concepts?.filter(
+    (c) => (c as { domain?: string }).domain === activeDomain,
+  );
+  const levelGroups = conceptsByDomain?.reduce(
     (acc, c) => {
       if (!acc[c.level]) acc[c.level] = [];
       acc[c.level].push(c);
       return acc;
     },
-    {} as Record<number, typeof concepts>,
+    {} as Record<number, typeof conceptsByDomain>,
   );
 
   const gsiValue = gsi ?? 0;
@@ -149,8 +186,9 @@ export default function DashboardPage() {
   const closedSessions = sessions.filter(s => s.state === 'CLOSED');
   const chartSessions = closedSessionsData?.items ?? [];
   const inProgressSessions = sessions.filter(s => s.state !== 'CLOSED');
-  const progressPercent = concepts && concepts.length > 0
-    ? Math.round(((masteries?.length ?? 0) / concepts.length) * 100)
+  const totalConcepts = concepts?.length ?? 0;
+  const progressPercent = totalConcepts > 0
+    ? Math.round(((masteries?.length ?? 0) / totalConcepts) * 100)
     : 0;
 
   if (isDashboardLoading) {
@@ -323,11 +361,12 @@ export default function DashboardPage() {
               </Link>
             </div>
 
-            {activeDomain === 'javascript' && levelGroups ? (
+            {levelGroups && Object.keys(levelGroups).length > 0 ? (
               Object.entries(levelGroups)
                 .sort(([a], [b]) => Number(a) - Number(b))
                 .map(([level, items]) => {
-                  const meta = levelMeta[Number(level)] ?? { label: `Level ${level}`, color: 'text-gray-600', bg: 'bg-gray-50' };
+                  const metaMap = activeDomain !== 'javascript' && activeDomain !== 'react' ? levelMetaCS : levelMeta;
+                  const meta = metaMap[Number(level)] ?? { label: `Level ${level}`, color: 'text-gray-600', bg: 'bg-gray-50' };
                   return (
                     <div key={level} className="rounded-3xl bg-white p-6 shadow-sm">
                       <div className="mb-4 flex items-center gap-2.5">
@@ -390,7 +429,7 @@ export default function DashboardPage() {
                     </div>
                   );
                 })
-            ) : activeDomain !== 'javascript' ? (
+            ) : conceptsByDomain && conceptsByDomain.length === 0 ? (
               <div className="flex h-60 flex-col items-center justify-center rounded-3xl bg-white shadow-sm">
                 <p className="text-sm font-medium text-gray-400">준비 중인 도메인입니다</p>
                 <p className="mt-1 text-xs text-gray-300">곧 출시될 예정이에요</p>
