@@ -21,6 +21,7 @@ import { UsageWarning } from '@/components/usage-warning';
 import { GrowthChart } from '@/components/charts';
 import { DashboardSkeleton } from '@/components/skeletons';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
+import { LanguageOnboardingOverlay, PREFERRED_LANGUAGE_DISMISS_KEY } from '@/components/language-onboarding-overlay';
 
 const PLAN_MAX_LEVEL: Record<string, number> = {
   FREE: 2,
@@ -174,12 +175,13 @@ export default function DashboardPage() {
   const [selectedConcept, setSelectedConcept] = useState<{ id: string; name: string; level: number } | null>(null);
   const [creating, setCreating] = useState(false);
   const [sessionStartError, setSessionStartError] = useState('');
+  const [languageOverlayOpen, setLanguageOverlayOpen] = useState<boolean | null>(null);
   const queryClient = useQueryClient();
   const router = useRouter();
   const { data: gsi, isPending: gsiLoading, isError: gsiError, error: gsiErrorObj } = useGSI();
   const { data: concepts, isPending: conceptsLoading, isError: conceptsError, error: conceptsErrorObj } = useConceptTree();
   const { data: weakConcepts } = useWeakConcepts();
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { data: sessionsData, isPending: sessionsLoading, isError: sessionsError, error: sessionsErrorObj } = useSessions();
   const { data: closedSessionsData } = useSessions({ state: 'CLOSED', limit: 100 });
   const { data: masteries, isPending: masteriesLoading, isError: masteriesError, error: masteriesErrorObj } = useMasteries();
@@ -190,6 +192,16 @@ export default function DashboardPage() {
 
   const isPro = user?.planType === 'PRO' || user?.planType === 'MASTER';
   const maxLevel = PLAN_MAX_LEVEL[user?.planType ?? 'FREE'] ?? 2;
+
+  // 회원가입(이메일 인증) 완료 후 대시보드 진입 시 선호 언어 선택 오버레이 (게임 직업 선택 느낌)
+  useEffect(() => {
+    if (languageOverlayOpen !== null) return;
+    if (!user) return;
+    const noLang = user.preferredLanguage == null || user.preferredLanguage === '';
+    const notDismissed = typeof window === 'undefined' || !sessionStorage.getItem(PREFERRED_LANGUAGE_DISMISS_KEY);
+    if (noLang && notDismissed) setLanguageOverlayOpen(true);
+    else setLanguageOverlayOpen(false);
+  }, [user, languageOverlayOpen]);
 
   const masteryMap = new Map(
     masteries?.map((m) => [m.conceptId, m.masteryScore]) ?? [],
@@ -280,6 +292,15 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 px-6 py-8">
+      {languageOverlayOpen && (
+        <LanguageOnboardingOverlay
+          onComplete={() => {
+            refreshUser();
+            setLanguageOverlayOpen(false);
+          }}
+          onDismiss={() => setLanguageOverlayOpen(false)}
+        />
+      )}
       <div className="mx-auto max-w-7xl">
         {hasError && (
           <div className="mb-6 flex items-center justify-between gap-4 rounded-2xl bg-red-50 px-4 py-3.5 text-sm text-red-600">

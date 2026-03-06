@@ -78,12 +78,13 @@ export async function refreshUser(): Promise<AuthUser | null> {
   }
 }
 
-export async function updatePreferredLanguage(
-  preferredLanguage: string | null,
-): Promise<AuthUser | null> {
+export async function updateProfile(payload: {
+  name?: string;
+  preferredLanguage?: string | null;
+}): Promise<AuthUser | null> {
   if (typeof window === 'undefined' || !getToken()) return null;
   try {
-    const { data } = await api.patch<AuthUser>('/users/me', { preferredLanguage });
+    const { data } = await api.patch<AuthUser>('/users/me', payload);
     localStorage.setItem(USER_KEY, JSON.stringify(data));
     return data;
   } catch {
