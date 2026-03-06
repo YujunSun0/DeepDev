@@ -29,20 +29,22 @@ export class UsersService {
   }
 
   async findByEmail(email: string) {
-    return this.prisma.user.findUnique({ where: { email } });
+    return this.prisma.user.findFirst({
+      where: { email, deletedAt: null },
+    });
   }
 
   async findById(id: string) {
-    return this.prisma.user.findUnique({ where: { id } });
+    return this.prisma.user.findFirst({
+      where: { id, deletedAt: null },
+    });
   }
 
+  /** Soft delete: deletedAt 설정, 관련 데이터는 1년 보관 후 정리 예정 */
   async deleteUser(userId: string): Promise<void> {
-    await this.prisma.$transaction(async (tx) => {
-      await tx.session.deleteMany({ where: { userId } });
-      await tx.userMastery.deleteMany({ where: { userId } });
-      await tx.exploration.deleteMany({ where: { userId } });
-      await tx.userAchievement.deleteMany({ where: { userId } });
-      await tx.user.delete({ where: { id: userId } });
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { deletedAt: new Date() },
     });
   }
 
