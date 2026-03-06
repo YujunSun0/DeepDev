@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
-import { X, Trophy, ChevronRight, Flame } from 'lucide-react';
+import { X, Trophy, Flame } from 'lucide-react';
 
 type ModalData =
   | {
@@ -116,14 +115,13 @@ export function AchievementModal({ open, onClose, data }: AchievementModalProps)
           </>
         )}
 
-        <Link
-          href="/achievements"
+        <button
+          type="button"
           onClick={onClose}
-          className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-primary-500 py-3 text-sm font-semibold text-white transition hover:bg-primary-600"
+          className="mt-6 flex w-full items-center justify-center rounded-xl bg-primary-500 py-3 text-sm font-semibold text-white transition hover:bg-primary-600"
         >
-          업적 보기
-          <ChevronRight className="h-4 w-4" />
-        </Link>
+          확인
+        </button>
       </div>
     </div>
   );

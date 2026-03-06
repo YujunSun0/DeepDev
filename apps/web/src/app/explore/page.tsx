@@ -8,12 +8,13 @@ import {
   ChevronLeft, ChevronDown, Sparkles, BookOpen, LogOut, Menu, X,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useConceptTree } from '@/hooks/use-api';
+import { useConceptTree, useAchievementsCheck } from '@/hooks/use-api';
 import { explorationApi, type ExplorationMessage, type ExplorationDetail } from '@/lib/exploration-api';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { MarkdownRenderer } from '@/components/markdown-renderer';
 import { UsageWarning } from '@/components/usage-warning';
 import { DomainTabs } from '@/components/domain-tabs';
+import { AchievementModal } from '@/components/achievement-modal';
 import { useAutoResizeTextarea } from '@/hooks/use-auto-resize-textarea';
 
 function useTypewriter(text: string, speed = 12) {
@@ -82,6 +83,12 @@ export default function ExplorePage() {
   const [localMessages, setLocalMessages] = useState<(ExplorationMessage & { isTyping?: boolean })[]>([]);
   const [turnsLeft, setTurnsLeft] = useState(20);
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [achievementModalData, setAchievementModalData] = useState<{
+    type: 'achievement';
+    count: number;
+    names: string[];
+  } | null>(null);
+  const achievementsCheck = useAchievementsCheck();
   useEffect(() => {
     const onResize = () => setSidebarOpen(window.innerWidth >= 1024);
     onResize();
@@ -183,6 +190,7 @@ export default function ExplorePage() {
       ]);
       queryClient.invalidateQueries({ queryKey: ['explorations'] });
       queryClient.invalidateQueries({ queryKey: ['usage'] });
+      checkAchievementsAndShowModal();
     } catch (e: unknown) {
       if (activeExplorationIdRef.current !== null) return;
       setError(getApiErrorMessage(e));
@@ -225,6 +233,7 @@ export default function ExplorePage() {
         );
         queryClient.invalidateQueries({ queryKey: ['explorations'] });
         queryClient.invalidateQueries({ queryKey: ['usage'] });
+        checkAchievementsAndShowModal();
         return;
       }
       setLoading(false);
@@ -235,12 +244,28 @@ export default function ExplorePage() {
         { role: 'assistant', content: result.reply, isTyping: true },
       ]);
       queryClient.invalidateQueries({ queryKey: ['usage'] });
+      checkAchievementsAndShowModal();
     } catch (e: unknown) {
       setPendingRequestExplorationId(null);
       pendingUserMessageRef.current = null;
       if (activeExplorationIdRef.current !== requestForId) return;
       setError(getApiErrorMessage(e));
       setLoading(false);
+    }
+  };
+
+  const checkAchievementsAndShowModal = async () => {
+    try {
+      const result = await achievementsCheck.mutateAsync();
+      if (result.awarded > 0 && result.achievementNames?.length) {
+        setAchievementModalData({
+          type: 'achievement',
+          count: result.awarded,
+          names: result.achievementNames,
+        });
+      }
+    } catch {
+      // 업적 체크 실패는 무시
     }
   };
 
@@ -526,6 +551,12 @@ export default function ExplorePage() {
           </div>
         </div>
       </div>
+
+      <AchievementModal
+        open={achievementModalData !== null}
+        onClose={() => setAchievementModalData(null)}
+        data={achievementModalData}
+      />
     </div>
   );
 }
