@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import * as authLib from '@/lib/auth';
 import { getApiErrorMessage } from '@/lib/api-error';
-import { Settings, Loader2, CheckCircle2, Sparkles, User, Trash2 } from 'lucide-react';
+import { Settings, Loader2, CheckCircle2, Sparkles, User } from 'lucide-react';
 import {
   SiJavascript,
   SiTypescript,
@@ -168,41 +168,37 @@ export default function SettingsPage() {
               );
             })}
           </div>
-          <div className="mt-4 flex items-center gap-3">
-            <button
-              onClick={handleSave}
-              disabled={saving || !hasChanges}
-              className="flex items-center gap-2 rounded-xl bg-primary-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-400 disabled:opacity-50"
-            >
-              {saving ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : saved ? (
-                <CheckCircle2 className="h-4 w-4" />
-              ) : null}
-              {saving ? '저장 중...' : saved ? '저장됨' : '저장'}
-            </button>
-            {saved && (
-              <span className="text-sm text-emerald-600">설정이 저장되었습니다</span>
-            )}
-          </div>
+        </div>
+
+        {/* 변경사항 저장 - 프로필·언어 모두 적용 */}
+        <div className="mb-6 flex items-center gap-3">
+          <button
+            onClick={handleSave}
+            disabled={saving || !hasChanges}
+            className="flex items-center gap-2 rounded-xl bg-primary-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-primary-400 disabled:opacity-50"
+          >
+            {saving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : saved ? (
+              <CheckCircle2 className="h-4 w-4" />
+            ) : null}
+            {saving ? '저장 중...' : saved ? '저장됨' : '변경사항 저장'}
+          </button>
+          {saved && (
+            <span className="text-sm text-emerald-600">설정이 저장되었습니다</span>
+          )}
         </div>
 
         {/* 회원 탈퇴 */}
-        <div className="rounded-3xl border-2 border-red-100 bg-red-50/50 p-6">
-          <h2 className="mb-2 flex items-center gap-2 text-base font-bold text-gray-900">
-            <Trash2 className="h-4 w-4 text-red-500" />
-            회원 탈퇴
-          </h2>
-          <p className="mb-4 text-sm text-gray-600">
-            탈퇴 시 모든 학습 기록(세션, 숙련도, 탐구 대화)이 삭제되며 복구할 수 없습니다.
-          </p>
+        <p className="text-sm text-gray-500">
           <button
+            type="button"
             onClick={() => setDeleteModalOpen(true)}
-            className="rounded-xl border-2 border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-100"
+            className="text-red-600 underline hover:text-red-700"
           >
-            회원 탈퇴하기
+            회원 탈퇴
           </button>
-        </div>
+        </p>
       </div>
 
       <ConfirmModal

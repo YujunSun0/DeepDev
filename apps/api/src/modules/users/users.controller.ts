@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Delete, Body, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
 import {
   CurrentUser,
@@ -23,6 +23,11 @@ export class UsersController {
       preferredLanguage: fullUser!.preferredLanguage,
       createdAt: fullUser!.createdAt,
     };
+  }
+
+  @Delete('me')
+  async deleteMe(@CurrentUser() user: CurrentUserPayload) {
+    await this.usersService.deleteUser(user.id);
   }
 
   @Patch('me')

@@ -36,6 +36,16 @@ export class UsersService {
     return this.prisma.user.findUnique({ where: { id } });
   }
 
+  async deleteUser(userId: string): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      await tx.session.deleteMany({ where: { userId } });
+      await tx.userMastery.deleteMany({ where: { userId } });
+      await tx.exploration.deleteMany({ where: { userId } });
+      await tx.userAchievement.deleteMany({ where: { userId } });
+      await tx.user.delete({ where: { id: userId } });
+    });
+  }
+
   async updateProfile(userId: string, data: { name?: string; preferredLanguage?: string | null }) {
     const updateData: { name?: string | null; preferredLanguage?: string | null } = {};
     if (data.name !== undefined) updateData.name = data.name || null;
