@@ -14,8 +14,8 @@ export function LandingCta({ className = '', variant = 'hero' }: LandingCtaProps
 
   const baseClass =
     variant === 'hero'
-      ? 'rounded-2xl bg-primary-500 px-8 py-4 text-base font-semibold text-white shadow-lg shadow-primary-500/25 transition hover:bg-primary-400 hover:shadow-primary-400/30'
-      : 'inline-block rounded-2xl bg-primary-500 px-10 py-4 text-base font-semibold text-white shadow-lg shadow-primary-500/25 transition hover:bg-primary-400';
+      ? 'rounded-xl bg-primary-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-500/25 transition hover:bg-primary-400 hover:shadow-primary-400/30 sm:rounded-2xl sm:px-8 sm:py-4 sm:text-base'
+      : 'inline-block rounded-xl bg-primary-500 px-6 py-3 text-sm font-semibold text-white shadow-lg shadow-primary-500/25 transition hover:bg-primary-400 sm:rounded-2xl sm:px-10 sm:py-4 sm:text-base';
 
   if (user) {
     return (
