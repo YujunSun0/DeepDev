@@ -22,6 +22,7 @@ export class UsersController {
       planType: fullUser!.planType,
       preferredLanguage: fullUser!.preferredLanguage,
       createdAt: fullUser!.createdAt,
+      emailVerified: fullUser!.emailVerified,
     };
   }
 
@@ -43,6 +44,7 @@ export class UsersController {
       planType: updated.planType,
       preferredLanguage: updated.preferredLanguage,
       createdAt: updated.createdAt,
+      emailVerified: updated.emailVerified,
     };
   }
 }

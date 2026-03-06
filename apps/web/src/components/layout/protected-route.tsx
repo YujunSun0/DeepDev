@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
+import { EmailVerificationGate } from '@/components/email-verification-gate';
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -24,5 +25,9 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (!user) return null;
 
-  return <>{children}</>;
+  return (
+    <EmailVerificationGate>
+      {children}
+    </EmailVerificationGate>
+  );
 }

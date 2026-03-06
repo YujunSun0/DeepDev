@@ -6,6 +6,7 @@ interface AuthUser {
   name: string | null;
   planType: string;
   preferredLanguage?: string | null;
+  emailVerified?: boolean;
 }
 
 interface AuthResponse {
@@ -107,6 +108,11 @@ export interface VerifyEmailResponse {
   message: string;
   accessToken?: string;
   user?: AuthUser;
+}
+
+export async function resendVerificationEmail(email: string): Promise<{ message: string }> {
+  const { data } = await api.post<{ message: string }>('/auth/resend-verification', { email });
+  return data;
 }
 
 export async function verifyEmailAndLogin(token: string): Promise<VerifyEmailResponse> {

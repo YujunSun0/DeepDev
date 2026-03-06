@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
+import { resendVerificationEmail } from '@/lib/auth';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { ErrorMessage } from '@/components/ui';
 
@@ -18,6 +19,7 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resending, setResending] = useState(false);
 
   useEffect(() => {
     const registered = searchParams.get('registered');
@@ -85,7 +87,30 @@ export default function LoginPage() {
           </p>
 
           {error && (
-            <ErrorMessage message={error} onDismiss={() => setError('')} className="mb-5" />
+            <div className="mb-5">
+              <ErrorMessage message={error} onDismiss={() => setError('')} />
+              {error.includes('이메일 인증') && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setResending(true);
+                    try {
+                      const res = await resendVerificationEmail(email);
+                      setError('');
+                      setSuccess(res.message);
+                    } catch (e) {
+                      setError(getApiErrorMessage(e));
+                    } finally {
+                      setResending(false);
+                    }
+                  }}
+                  disabled={resending || !email}
+                  className="mt-2 text-sm text-primary-600 hover:text-primary-500 disabled:opacity-50"
+                >
+                  {resending ? '전송 중...' : '인증 메일 다시 보내기'}
+                </button>
+              )}
+            </div>
           )}
           {success && (
             <div className="mb-5 rounded-2xl bg-green-50 px-4 py-3 text-sm text-green-700">

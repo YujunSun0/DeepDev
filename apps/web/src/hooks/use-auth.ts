@@ -11,6 +11,7 @@ interface AuthUser {
   name: string | null;
   planType: string;
   preferredLanguage?: string | null;
+  emailVerified?: boolean;
 }
 
 interface AuthContextValue {
@@ -42,11 +43,17 @@ export function useAuthProvider(): AuthContextValue {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const savedUser = authLib.getSavedUser();
-    if (savedUser && authLib.getToken()) {
-      setUser(savedUser);
-    }
-    setIsLoading(false);
+    const init = async () => {
+      const token = authLib.getToken();
+      const savedUser = authLib.getSavedUser();
+      if (token && savedUser) {
+        setUser(savedUser);
+        const updated = await authLib.refreshUser();
+        if (updated) setUser(updated);
+      }
+      setIsLoading(false);
+    };
+    init();
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {

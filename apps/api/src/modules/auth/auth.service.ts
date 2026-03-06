@@ -91,6 +91,25 @@ export class AuthService {
     };
   }
 
+  async resendVerificationEmail(email: string): Promise<{ message: string }> {
+    if (!this.emailService.enabled) {
+      throw new BadRequestException('이메일 서비스가 설정되지 않았습니다');
+    }
+    const user = await this.usersService.findByEmail(email);
+    if (!user) {
+      return { message: '해당 이메일로 등록된 계정이 없습니다' };
+    }
+    if (user.emailVerified) {
+      return { message: '이미 인증된 이메일입니다. 로그인해주세요' };
+    }
+    const verifyToken = this.jwtService.sign(
+      { sub: user.id, email: user.email, purpose: 'email-verify' },
+      { expiresIn: '24h' },
+    );
+    await this.emailService.sendVerificationEmail(user.email, verifyToken);
+    return { message: '인증 메일을 다시 보내드렸습니다. 이메일을 확인해주세요' };
+  }
+
   async verifyEmail(token: string) {
     try {
       const payload = this.jwtService.verify<{
