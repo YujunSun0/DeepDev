@@ -92,6 +92,12 @@ export async function updateProfile(payload: {
   }
 }
 
+export async function deleteAccount(): Promise<void> {
+  if (typeof window === 'undefined' || !getToken()) return;
+  await api.delete('/users/me');
+  logout();
+}
+
 export function isAuthenticated(): boolean {
   return !!getToken();
 }
