@@ -1,9 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import * as authLib from '@/lib/auth';
-import { Settings, Loader2, CheckCircle2, Sparkles } from 'lucide-react';
+import { getApiErrorMessage } from '@/lib/api-error';
+import { Settings, Loader2, CheckCircle2, Sparkles, User, Trash2 } from 'lucide-react';
 import {
   SiJavascript,
   SiTypescript,
@@ -14,7 +16,7 @@ import {
   SiGo,
   SiRust,
 } from 'react-icons/si';
-import { ErrorMessage } from '@/components/ui';
+import { ErrorMessage, ConfirmModal } from '@/components/ui';
 
 const LANGUAGE_OPTIONS = [
   { value: '', label: '기본값', icon: Sparkles, color: 'text-gray-400' },
@@ -29,40 +31,60 @@ const LANGUAGE_OPTIONS = [
 ];
 
 export default function SettingsPage() {
-  const { user, refreshUser } = useAuth();
+  const router = useRouter();
+  const { user, refreshUser, logout } = useAuth();
+  const [name, setName] = useState('');
   const [preferredLanguage, setPreferredLanguage] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
 
   useEffect(() => {
-    if (user?.preferredLanguage) {
-      setPreferredLanguage(user.preferredLanguage);
-    } else {
-      setPreferredLanguage('');
+    if (user) {
+      setName(user.name ?? '');
+      setPreferredLanguage(user.preferredLanguage ?? '');
     }
-  }, [user?.preferredLanguage]);
+  }, [user?.id, user?.name, user?.preferredLanguage]);
 
   const handleSave = async () => {
     setError('');
     setSaving(true);
     setSaved(false);
     try {
-      const value = preferredLanguage || null;
-      const updated = await authLib.updatePreferredLanguage(value);
+      const updated = await authLib.updateProfile({
+        name: name.trim(),
+        preferredLanguage: preferredLanguage || null,
+      });
       if (updated) {
         refreshUser();
         setSaved(true);
         setTimeout(() => setSaved(false), 2000);
       }
-    } catch {
-      setError('저장에 실패했습니다.');
+    } catch (e: unknown) {
+      setError(getApiErrorMessage(e));
     } finally {
       setSaving(false);
     }
   };
 
+  const handleDeleteAccount = async () => {
+    setDeleteError('');
+    setDeleting(true);
+    try {
+      await authLib.deleteAccount();
+      logout();
+    } catch (e: unknown) {
+      setDeleteError(getApiErrorMessage(e));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const hasChanges =
+    (name !== (user?.name ?? '')) ||
     (preferredLanguage || '') !== (user?.preferredLanguage ?? '');
 
   return (
@@ -74,7 +96,7 @@ export default function SettingsPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold text-gray-900">설정</h1>
-            <p className="text-sm text-gray-500">학습 환경을 맞춤 설정하세요</p>
+            <p className="text-sm text-gray-500">프로필과 학습 환경을 설정하세요</p>
           </div>
         </div>
 
@@ -82,7 +104,39 @@ export default function SettingsPage() {
           <ErrorMessage message={error} onDismiss={() => setError('')} className="mb-6" />
         )}
 
-        <div className="rounded-3xl bg-white p-6 shadow-sm">
+        {/* 프로필 정보 */}
+        <div className="mb-6 rounded-3xl bg-white p-6 shadow-sm">
+          <h2 className="mb-4 flex items-center gap-2 text-base font-bold text-gray-900">
+            <User className="h-4 w-4 text-primary-500" />
+            프로필 정보
+          </h2>
+          <div className="space-y-4">
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-gray-500">이메일</label>
+              <input
+                type="email"
+                value={user?.email ?? ''}
+                readOnly
+                className="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-gray-500"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-gray-500">이름</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="표시할 이름을 입력하세요"
+                maxLength={50}
+                className="w-full rounded-xl border-2 border-gray-100 bg-gray-50 px-4 py-3 text-sm text-gray-800 outline-none transition focus:border-primary-300 focus:bg-white"
+              />
+              <p className="mt-1 text-right text-xs text-gray-400">{name.length}/50</p>
+            </div>
+          </div>
+        </div>
+
+        {/* 선호 언어 */}
+        <div className="mb-6 rounded-3xl bg-white p-6 shadow-sm">
           <h2 className="mb-1 text-base font-bold text-gray-900">선호 프로그래밍 언어</h2>
           <p className="mb-5 text-sm text-gray-500">
             개념 설명과 문제의 코드 예시를 이 언어로 생성합니다. 모르는 언어의 예시는 이해하기 어려우니,
@@ -132,7 +186,39 @@ export default function SettingsPage() {
             )}
           </div>
         </div>
+
+        {/* 회원 탈퇴 */}
+        <div className="rounded-3xl border-2 border-red-100 bg-red-50/50 p-6">
+          <h2 className="mb-2 flex items-center gap-2 text-base font-bold text-gray-900">
+            <Trash2 className="h-4 w-4 text-red-500" />
+            회원 탈퇴
+          </h2>
+          <p className="mb-4 text-sm text-gray-600">
+            탈퇴 시 모든 학습 기록(세션, 숙련도, 탐구 대화)이 삭제되며 복구할 수 없습니다.
+          </p>
+          <button
+            onClick={() => setDeleteModalOpen(true)}
+            className="rounded-xl border-2 border-red-200 px-4 py-2.5 text-sm font-semibold text-red-600 transition hover:bg-red-100"
+          >
+            회원 탈퇴하기
+          </button>
+        </div>
       </div>
+
+      <ConfirmModal
+        open={deleteModalOpen}
+        onClose={() => { setDeleteModalOpen(false); setDeleteError(''); }}
+        onConfirm={handleDeleteAccount}
+        title="회원 탈퇴"
+        message="정말 탈퇴하시겠습니까? 모든 학습 기록이 삭제되며 이 작업은 되돌릴 수 없습니다."
+        confirmText="탈퇴하기"
+        cancelText="취소"
+        variant="danger"
+        closeOnConfirm={false}
+        confirmLoading={deleting}
+        confirmLoadingText="처리 중..."
+        error={deleteError}
+      />
     </div>
   );
 }
