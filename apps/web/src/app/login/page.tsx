@@ -114,7 +114,12 @@ export default function LoginPage() {
           )}
           {success && (
             <div className="mb-5 rounded-2xl bg-green-50 px-4 py-3 text-sm text-green-700">
-              {success}
+              <p>{success}</p>
+              {(success.includes('이메일') || success.includes('인증')) && (
+                <p className="mt-2 text-xs text-green-600/90">
+                  메일이 보이지 않는다면 스팸 메일함을 확인해주세요.
+                </p>
+              )}
             </div>
           )}
 
