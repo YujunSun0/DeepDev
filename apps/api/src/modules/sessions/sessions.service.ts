@@ -5,6 +5,7 @@ import { MasteryService } from '../mastery/mastery.service';
 import { ConceptsService } from '../concepts/concepts.service';
 import { UsageService } from '../usage/usage.service';
 import { UsersService } from '../users/users.service';
+import { AchievementsService } from '../achievements/achievements.service';
 import {
   CONCEPT_EXPLANATION_PROMPT,
   BASIC_QUESTION_PROMPT,
@@ -94,6 +95,7 @@ export class SessionsService {
     private readonly concepts: ConceptsService,
     private readonly usage: UsageService,
     private readonly users: UsersService,
+    private readonly achievements: AchievementsService,
   ) {}
 
   /* ── Basic CRUD ── */
@@ -462,7 +464,15 @@ export class SessionsService {
         application: ctx.application?.score ?? 0,
       };
       const totalScore = session.score ?? 0;
-      return { state: STATES.CLOSED, scores, totalScore, summary: ctx.summary };
+      return {
+        state: STATES.CLOSED,
+        scores,
+        totalScore,
+        summary: ctx.summary,
+        achievementsAwarded: 0,
+        achievementNames: [],
+        progressNotification: undefined,
+      };
     }
 
     if (session.state !== STATES.APPLICATION) throw new BadRequestException('올바른 상태가 아닙니다');
@@ -503,11 +513,21 @@ export class SessionsService {
 
     await this.mastery.updateMastery(userId, session.conceptId, totalScore);
 
+    const { awarded, achievementNames } = await this.achievements.checkAndAward(userId);
+
+    const progressNotification = await this.achievements.getProgressNotification(
+      userId,
+      session.createdAt,
+    );
+
     return {
       state: STATES.CLOSED,
       scores,
       totalScore: Math.round(totalScore * 100) / 100,
       summary,
+      achievementsAwarded: awarded,
+      achievementNames: achievementNames ?? [],
+      progressNotification: progressNotification ?? undefined,
     };
   }
 

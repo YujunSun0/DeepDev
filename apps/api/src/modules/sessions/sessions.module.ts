@@ -6,9 +6,10 @@ import { MasteryModule } from '../mastery/mastery.module';
 import { UsageModule } from '../usage/usage.module';
 import { UsersModule } from '../users/users.module';
 import { LlmModule } from '../../llm/llm.module';
+import { AchievementsModule } from '../achievements/achievements.module';
 
 @Module({
-  imports: [ConceptsModule, MasteryModule, UsageModule, UsersModule, LlmModule],
+  imports: [ConceptsModule, MasteryModule, UsageModule, UsersModule, LlmModule, AchievementsModule],
   controllers: [SessionsController],
   providers: [SessionsService],
   exports: [SessionsService],

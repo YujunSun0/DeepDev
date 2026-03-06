@@ -28,9 +28,10 @@ model User {
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 
-  sessions      Session[]
-  masteries     UserMastery[]
-  explorations  Exploration[]
+  sessions         Session[]
+  masteries        UserMastery[]
+  explorations     Exploration[]
+  userAchievements UserAchievement[]
 
   @@map("users")
 }
@@ -99,4 +100,35 @@ model Exploration {
   concept Concept @relation(fields: [conceptId], references: [id])
 
   @@map("explorations")
+}
+
+model Achievement {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  description String
+  icon        String?  // 아이콘 경로 또는 emoji
+  category    String   @default("award") @db.VarChar(16) // "record" | "award"
+  targetValue Int      @default(0) @map("target_value")
+  tier        Int?     // Awards용 단계 (1~10)
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  userAchievements UserAchievement[]
+
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id            String   @id @default(uuid())
+  userId        String   @map("user_id")
+  achievementId String   @map("achievement_id")
+  value         Int      @default(0) // 달성 시점 값
+  achievedAt    DateTime @default(now()) @map("achieved_at")
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@map("user_achievements")
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 
 interface Concept {
@@ -137,5 +137,59 @@ export function useUsage() {
       return data;
     },
     refetchInterval: 60_000,
+  });
+}
+
+export interface AchievementRecord {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  icon: string | null;
+  category: string;
+  currentValue: number;
+  achievedAt: string | null;
+}
+
+export interface AchievementAward {
+  id: string;
+  code: string;
+  name: string;
+  description: string;
+  icon: string | null;
+  category: string;
+  targetValue: number;
+  tier: number | null;
+  unlocked: boolean;
+  value: number;
+  achievedAt: string | null;
+  progress: { current: number; target: number };
+}
+
+export interface AchievementsMe {
+  records: AchievementRecord[];
+  awards: AchievementAward[];
+}
+
+export function useAchievements(): ReturnType<typeof useQuery<AchievementsMe>> {
+  return useQuery({
+    queryKey: ['achievements', 'me'],
+    queryFn: async () => {
+      const { data } = await api.get<AchievementsMe>('/achievements/me');
+      return data;
+    },
+  });
+}
+
+export function useAchievementsCheck() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { data } = await api.post<{ awarded: number }>('/achievements/check');
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['achievements'] });
+    },
   });
 }

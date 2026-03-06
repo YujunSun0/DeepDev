@@ -55,6 +55,17 @@ export interface SummaryData {
     recommendations: string[];
     nextSteps: string;
   };
+  achievementsAwarded?: number;
+  achievementNames?: string[];
+  progressNotification?: {
+    code: string;
+    name: string;
+    description: string;
+    icon: string | null;
+    current: number;
+    target: number;
+    message: string;
+  };
 }
 
 export const sessionApi = {

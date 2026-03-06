@@ -11,6 +11,7 @@ import {
 import { api } from '@/lib/api';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { ErrorMessage } from '@/components/ui';
+import { AchievementModal } from '@/components/achievement-modal';
 import { MarkdownRenderer } from '@/components/markdown-renderer';
 import { CodeEditor } from '@/components/code-editor';
 import { DiscussionChat } from '@/components/discussion-chat';
@@ -114,6 +115,10 @@ export default function SessionPlayPage() {
   const [applicationResult, setApplicationResult] = useState<ApplicationAnswerResult | null>(null);
   const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
   const [viewingStep, setViewingStep] = useState<typeof STEP_ORDER[number] | null>(null);
+  type AchievementModalItem =
+    | { type: 'achievement'; count: number; names: string[] }
+    | { type: 'progress'; code: string; name: string; description: string; icon: string | null; current: number; target: number; message: string };
+  const [achievementModalQueue, setAchievementModalQueue] = useState<AchievementModalItem[]>([]);
 
   /* Load session info & restore state */
   useEffect(() => {
@@ -364,6 +369,28 @@ export default function SessionPlayPage() {
       const result = await sessionApi.getSummary(id);
       setSummaryData(result);
       setStep('summary');
+      const queue: AchievementModalItem[] = [];
+      if (result.achievementsAwarded && result.achievementsAwarded > 0) {
+        queue.push({
+          type: 'achievement',
+          count: result.achievementsAwarded,
+          names: result.achievementNames ?? [],
+        });
+      }
+      if (result.progressNotification) {
+        const p = result.progressNotification;
+        queue.push({
+          type: 'progress',
+          code: p.code,
+          name: p.name,
+          description: p.description,
+          icon: p.icon,
+          current: p.current,
+          target: p.target,
+          message: p.message,
+        });
+      }
+      setAchievementModalQueue(queue);
     } catch (e: unknown) {
       setError(getApiErrorMessage(e));
     } finally {
@@ -1132,6 +1159,32 @@ export default function SessionPlayPage() {
           </div>
         )}
       </div>
+
+      {/* 업적 달성/진행률 모달 (달성 1순위, 진행률 2순위) */}
+      <AchievementModal
+        open={achievementModalQueue.length > 0}
+        onClose={() => setAchievementModalQueue((q) => q.slice(1))}
+        data={
+          achievementModalQueue[0]
+            ? achievementModalQueue[0].type === 'achievement'
+              ? {
+                  type: 'achievement',
+                  count: achievementModalQueue[0].count,
+                  names: achievementModalQueue[0].names,
+                }
+              : {
+                  type: 'progress',
+                  code: achievementModalQueue[0].code,
+                  name: achievementModalQueue[0].name,
+                  description: achievementModalQueue[0].description,
+                  icon: achievementModalQueue[0].icon,
+                  current: achievementModalQueue[0].current,
+                  target: achievementModalQueue[0].target,
+                  message: achievementModalQueue[0].message,
+                }
+            : null
+        }
+      />
     </div>
   );
 }

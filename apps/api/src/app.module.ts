@@ -14,6 +14,7 @@ import { BillingModule } from './modules/billing/billing.module';
 import { HealthModule } from './modules/health/health.module';
 import { LlmModule } from './llm/llm.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { AchievementsModule } from './modules/achievements/achievements.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { PrismaModule } from './prisma/prisma.module';
     BillingModule,
     HealthModule,
     LlmModule,
+    AchievementsModule,
   ],
   providers: [
     {

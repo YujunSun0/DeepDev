@@ -12,7 +12,7 @@ import {
   Hash, LayoutList, GitBranch, Binary, Network, BarChart3,
 } from 'lucide-react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useGSI, useConceptTree, useWeakConcepts, useSessions, useMasteries } from '@/hooks/use-api';
+import { useGSI, useConceptTree, useWeakConcepts, useSessions, useMasteries, useAchievements } from '@/hooks/use-api';
 import { useAuth } from '@/hooks/use-auth';
 import { api } from '@/lib/api';
 import { getApiErrorMessage } from '@/lib/api-error';
@@ -185,6 +185,7 @@ export default function DashboardPage() {
   const { data: sessionsData, isPending: sessionsLoading, isError: sessionsError, error: sessionsErrorObj } = useSessions();
   const { data: closedSessionsData } = useSessions({ state: 'CLOSED', limit: 100 });
   const { data: masteries, isPending: masteriesLoading, isError: masteriesError, error: masteriesErrorObj } = useMasteries();
+  const { data: achievementsData } = useAchievements();
 
   const isDashboardLoading = gsiLoading || conceptsLoading || sessionsLoading || masteriesLoading;
   const hasError = gsiError || conceptsError || sessionsError || masteriesError;
@@ -526,6 +527,57 @@ export default function DashboardPage() {
 
           {/* ───── Right Sidebar ───── */}
           <div className="space-y-6">
+            {/* 업적 미리보기 */}
+            <div className="rounded-3xl bg-white p-6 shadow-sm">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="flex items-center gap-2 text-base font-bold text-gray-900">
+                  <Trophy className="h-4 w-4 text-amber-500" />
+                  업적
+                </h2>
+                <Link
+                  href="/achievements"
+                  className="flex items-center gap-1 text-xs font-semibold text-primary-500 transition hover:text-primary-600"
+                >
+                  더보기
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </Link>
+              </div>
+              {achievementsData?.awards && achievementsData.awards.length > 0 ? (
+                <div className="space-y-2">
+                  {achievementsData.awards
+                    .filter((a) => a.unlocked)
+                    .slice(0, 4)
+                    .map((a) => (
+                      <div
+                        key={a.id}
+                        className="flex items-center gap-3 rounded-xl border border-emerald-100 bg-emerald-50/50 px-3 py-2"
+                      >
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100 text-emerald-600">
+                          <Trophy className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium text-gray-800">{a.description}</p>
+                          <p className="text-xs text-gray-500">
+                            {a.achievedAt
+                              ? new Date(a.achievedAt).toLocaleDateString('ko-KR')
+                              : '달성'}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  {achievementsData.awards.filter((a) => a.unlocked).length === 0 && (
+                    <p className="py-4 text-center text-sm text-gray-400">
+                      학습을 완료하면 업적을 획득할 수 있어요
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <p className="py-4 text-center text-sm text-gray-400">
+                  학습을 완료하면 업적을 획득할 수 있어요
+                </p>
+              )}
+            </div>
+
             {/* Growth Chart (Pro only) */}
             <div className="rounded-3xl bg-white p-6 shadow-sm">
               <h2 className="mb-4 flex items-center gap-2 text-base font-bold text-gray-900">

@@ -8,7 +8,7 @@ import { useUsage } from '@/hooks/use-api';
 import {
   LayoutDashboard, GraduationCap, ClipboardList, BarChart3,
   MessageCircle, CreditCard, LogOut, ChevronLeft,
-  Menu, Zap, X, Sparkles, Settings,
+  Menu, Zap, X, Sparkles, Settings, Trophy,
 } from 'lucide-react';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
 
@@ -20,6 +20,7 @@ const NAV_SECTIONS = [
       { href: '/session', label: '학습하기', icon: GraduationCap },
       { href: '/history', label: '학습 기록', icon: ClipboardList },
       { href: '/stats', label: '통계', icon: BarChart3 },
+      { href: '/achievements', label: '업적', icon: Trophy },
     ],
   },
   {

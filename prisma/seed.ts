@@ -553,6 +553,64 @@ async function main() {
   }
 
   console.log(`Seeded ${concepts.length} concepts`);
+
+  // Achievements (기획 문서 기준)
+  console.log('Seeding achievements...');
+
+  // 3-1. Personal Records (최고 기록)
+  const records = [
+    { code: 'STREAK_MAX', name: '최장 연속 학습', description: 'N일 연속 학습', icon: null, category: 'record', targetValue: 0, tier: null, sortOrder: 1 },
+    { code: 'SESSION_TOTAL', name: '총 세션 수', description: '완료한 세션 수', icon: null, category: 'record', targetValue: 0, tier: null, sortOrder: 2 },
+    { code: 'SCORE_MAX', name: '최고 점수', description: '단일 세션 최고 점수', icon: null, category: 'record', targetValue: 0, tier: null, sortOrder: 3 },
+    { code: 'CONCEPT_MASTERED', name: '마스터한 개념', description: '숙련도 80+ 개념 수', icon: null, category: 'record', targetValue: 0, tier: null, sortOrder: 4 },
+    { code: 'DOMAIN_EXPLORER', name: '도메인 탐험가', description: '학습한 도메인 수', icon: null, category: 'record', targetValue: 0, tier: null, sortOrder: 5 },
+  ];
+
+  // 3-2. Awards (단계별 배지)
+  const awards = [
+    { code: 'STREAK_3', name: '연속 학습왕', description: '3일 연속 학습', icon: '/achievements/acv_1-rmbg.png', category: 'award', targetValue: 3, tier: 1, sortOrder: 10 },
+    { code: 'STREAK_7', name: '연속 학습왕', description: '7일 연속 학습', icon: '/achievements/acv_1-rmbg.png', category: 'award', targetValue: 7, tier: 2, sortOrder: 11 },
+    { code: 'STREAK_14', name: '연속 학습왕', description: '14일 연속 학습', icon: '/achievements/acv_1-rmbg.png', category: 'award', targetValue: 14, tier: 3, sortOrder: 12 },
+    { code: 'STREAK_30', name: '연속 학습왕', description: '30일 연속 학습', icon: '/achievements/acv_1-rmbg.png', category: 'award', targetValue: 30, tier: 4, sortOrder: 13 },
+    { code: 'SESSION_5', name: '세션 마스터', description: '5개 세션 완료', icon: '/achievements/acv_3-rmbg.png', category: 'award', targetValue: 5, tier: 1, sortOrder: 14 },
+    { code: 'SESSION_10', name: '세션 마스터', description: '10개 세션 완료', icon: '/achievements/acv_3-rmbg.png', category: 'award', targetValue: 10, tier: 2, sortOrder: 15 },
+    { code: 'SESSION_25', name: '세션 마스터', description: '25개 세션 완료', icon: '/achievements/acv_3-rmbg.png', category: 'award', targetValue: 25, tier: 3, sortOrder: 16 },
+    { code: 'SESSION_50', name: '세션 마스터', description: '50개 세션 완료', icon: '/achievements/acv_3-rmbg.png', category: 'award', targetValue: 50, tier: 4, sortOrder: 17 },
+    { code: 'SESSION_100', name: '세션 마스터', description: '100개 세션 완료', icon: '/achievements/acv_3-rmbg.png', category: 'award', targetValue: 100, tier: 5, sortOrder: 18 },
+    { code: 'PERFECT_1', name: '만점왕', description: '100점 1회', icon: '/achievements/acv_4-rmbg.png', category: 'award', targetValue: 1, tier: 1, sortOrder: 19 },
+    { code: 'PERFECT_5', name: '만점왕', description: '100점 5회', icon: '/achievements/acv_4-rmbg.png', category: 'award', targetValue: 5, tier: 2, sortOrder: 20 },
+    { code: 'PERFECT_10', name: '만점왕', description: '100점 10회', icon: '/achievements/acv_4-rmbg.png', category: 'award', targetValue: 10, tier: 3, sortOrder: 21 },
+    { code: 'EARLY_BIRD_5', name: '새벽형 개발자', description: '새벽(5~7시) 학습 5회', icon: '/achievements/acv_5-rmbg.png', category: 'award', targetValue: 5, tier: 1, sortOrder: 22 },
+    { code: 'EARLY_BIRD_20', name: '새벽형 개발자', description: '새벽(5~7시) 학습 20회', icon: '/achievements/acv_5-rmbg.png', category: 'award', targetValue: 20, tier: 2, sortOrder: 23 },
+    { code: 'EXPLORER_3', name: '탐구왕', description: '탐구 대화 3턴', icon: '/achievements/acv_6-rmbg.png', category: 'award', targetValue: 3, tier: 1, sortOrder: 24 },
+    { code: 'EXPLORER_10', name: '탐구왕', description: '탐구 대화 10턴', icon: '/achievements/acv_6-rmbg.png', category: 'award', targetValue: 10, tier: 2, sortOrder: 25 },
+    { code: 'EXPLORER_30', name: '탐구왕', description: '탐구 대화 30턴', icon: '/achievements/acv_6-rmbg.png', category: 'award', targetValue: 30, tier: 3, sortOrder: 26 },
+    { code: 'CONCEPT_COLLECTOR_5', name: '개념 수집가', description: '학습한 개념 5개', icon: '/achievements/acv_7-rmbg.png', category: 'award', targetValue: 5, tier: 1, sortOrder: 27 },
+    { code: 'CONCEPT_COLLECTOR_15', name: '개념 수집가', description: '학습한 개념 15개', icon: '/achievements/acv_7-rmbg.png', category: 'award', targetValue: 15, tier: 2, sortOrder: 28 },
+    { code: 'CONCEPT_COLLECTOR_30', name: '개념 수집가', description: '학습한 개념 30개', icon: '/achievements/acv_7-rmbg.png', category: 'award', targetValue: 30, tier: 3, sortOrder: 29 },
+    { code: 'ALL_ROUNDER_4', name: '올라운더', description: '4개 도메인 모두 학습', icon: '/achievements/acv_8-rmbg.png', category: 'award', targetValue: 4, tier: 1, sortOrder: 30 },
+    { code: 'SPEED_LEARNER_3', name: '빠른 학습자', description: '하루 3세션 완료', icon: '/achievements/acv_2-rmbg.png', category: 'award', targetValue: 3, tier: 1, sortOrder: 31 },
+  ];
+
+  const allAchievements = [...records, ...awards];
+  const allCodes = new Set(allAchievements.map((a) => a.code));
+  const toRemove = await prisma.achievement.findMany({
+    where: { code: { notIn: Array.from(allCodes) } },
+    select: { id: true },
+  });
+  if (toRemove.length > 0) {
+    await prisma.achievement.deleteMany({
+      where: { id: { in: toRemove.map((r) => r.id) } },
+    });
+  }
+  for (const a of allAchievements) {
+    await prisma.achievement.upsert({
+      where: { code: a.code },
+      update: { name: a.name, description: a.description, icon: a.icon, category: a.category, targetValue: a.targetValue, tier: a.tier, sortOrder: a.sortOrder },
+      create: a,
+    });
+  }
+  console.log(`Seeded ${allAchievements.length} achievements`);
 }
 
 main()
