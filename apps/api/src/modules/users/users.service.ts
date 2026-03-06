@@ -36,10 +36,13 @@ export class UsersService {
     return this.prisma.user.findUnique({ where: { id } });
   }
 
-  async updatePreferredLanguage(userId: string, preferredLanguage: string | null) {
+  async updateProfile(userId: string, data: { name?: string; preferredLanguage?: string | null }) {
+    const updateData: { name?: string | null; preferredLanguage?: string | null } = {};
+    if (data.name !== undefined) updateData.name = data.name || null;
+    if (data.preferredLanguage !== undefined) updateData.preferredLanguage = data.preferredLanguage;
     return this.prisma.user.update({
       where: { id: userId },
-      data: { preferredLanguage },
+      data: updateData,
     });
   }
 }

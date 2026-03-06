@@ -27,10 +27,10 @@ export class UsersController {
 
   @Patch('me')
   async patchMe(@CurrentUser() user: CurrentUserPayload, @Body() dto: PatchMeDto) {
-    const updated = await this.usersService.updatePreferredLanguage(
-      user.id,
-      dto.preferredLanguage ?? null,
-    );
+    const updated = await this.usersService.updateProfile(user.id, {
+      name: dto.name,
+      preferredLanguage: dto.preferredLanguage,
+    });
     return {
       id: updated.id,
       email: updated.email,
