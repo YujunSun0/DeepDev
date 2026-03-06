@@ -513,7 +513,7 @@ export class SessionsService {
 
     await this.mastery.updateMastery(userId, session.conceptId, totalScore);
 
-    const { awarded, achievementNames } = await this.achievements.checkAndAward(userId);
+    const { awarded, achievementNames, awardedAchievements } = await this.achievements.checkAndAward(userId);
 
     const progressNotification = await this.achievements.getProgressNotification(
       userId,
@@ -527,6 +527,7 @@ export class SessionsService {
       summary,
       achievementsAwarded: awarded,
       achievementNames: achievementNames ?? [],
+      awardedAchievements: awardedAchievements ?? [],
       progressNotification: progressNotification ?? undefined,
     };
   }

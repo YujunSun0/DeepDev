@@ -57,6 +57,14 @@ export interface SummaryData {
   };
   achievementsAwarded?: number;
   achievementNames?: string[];
+  awardedAchievements?: Array<{
+    code: string;
+    name: string;
+    description: string;
+    icon: string | null;
+    current: number;
+    target: number;
+  }>;
   progressNotification?: {
     code: string;
     name: string;

@@ -102,7 +102,14 @@ export class AchievementsService {
       }
     }
 
-    const awardedNames: string[] = [];
+    const awardedAchievementsDetail: Array<{
+      code: string;
+      name: string;
+      description: string;
+      icon: string | null;
+      current: number;
+      target: number;
+    }> = [];
     if (toAward.length > 0) {
       await this.prisma.userAchievement.createMany({
         data: toAward.map(({ achievementId, value }) => ({
@@ -111,12 +118,25 @@ export class AchievementsService {
           value,
         })),
       });
-      const awardedAchievements = achievements.filter((a) =>
-        toAward.some((t) => t.achievementId === a.id),
-      );
-      awardedNames.push(...awardedAchievements.map((a) => a.description));
+      for (const t of toAward) {
+        const a = achievements.find((x) => x.id === t.achievementId);
+        if (a) {
+          awardedAchievementsDetail.push({
+            code: a.code,
+            name: a.name,
+            description: a.description,
+            icon: a.icon,
+            current: t.value,
+            target: a.targetValue,
+          });
+        }
+      }
     }
-    return { awarded: toAward.length, achievementNames: awardedNames };
+    return {
+      awarded: toAward.length,
+      achievementNames: awardedAchievementsDetail.map((a) => a.description),
+      awardedAchievements: awardedAchievementsDetail,
+    };
   }
 
   /** 진행률 알림: 달성은 아니지만 조건 부합 시 (연속 학습왕, 새벽형, 빠른 학습자) */

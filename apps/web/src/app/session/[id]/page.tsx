@@ -116,7 +116,17 @@ export default function SessionPlayPage() {
   const [summaryData, setSummaryData] = useState<SummaryData | null>(null);
   const [viewingStep, setViewingStep] = useState<typeof STEP_ORDER[number] | null>(null);
   type AchievementModalItem =
-    | { type: 'achievement'; count: number; names: string[] }
+    | {
+        type: 'achievement';
+        items: Array<{
+          code: string;
+          name: string;
+          description: string;
+          icon: string | null;
+          current: number;
+          target: number;
+        }>;
+      }
     | { type: 'progress'; code: string; name: string; description: string; icon: string | null; current: number; target: number; message: string };
   const [achievementModalQueue, setAchievementModalQueue] = useState<AchievementModalItem[]>([]);
 
@@ -370,11 +380,22 @@ export default function SessionPlayPage() {
       setSummaryData(result);
       setStep('summary');
       const queue: AchievementModalItem[] = [];
-      if (result.achievementsAwarded && result.achievementsAwarded > 0) {
+      if (result.awardedAchievements && result.awardedAchievements.length > 0) {
         queue.push({
           type: 'achievement',
-          count: result.achievementsAwarded,
-          names: result.achievementNames ?? [],
+          items: result.awardedAchievements,
+        });
+      } else if (result.achievementsAwarded && result.achievementsAwarded > 0) {
+        queue.push({
+          type: 'achievement',
+          items: (result.achievementNames ?? []).map((desc) => ({
+            code: '',
+            name: '',
+            description: desc,
+            icon: null,
+            current: 0,
+            target: 0,
+          })),
         });
       }
       if (result.progressNotification) {
@@ -1169,8 +1190,7 @@ export default function SessionPlayPage() {
             ? achievementModalQueue[0].type === 'achievement'
               ? {
                   type: 'achievement',
-                  count: achievementModalQueue[0].count,
-                  names: achievementModalQueue[0].names,
+                  items: achievementModalQueue[0].items,
                 }
               : {
                   type: 'progress',

@@ -85,8 +85,14 @@ export default function ExplorePage() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [achievementModalData, setAchievementModalData] = useState<{
     type: 'achievement';
-    count: number;
-    names: string[];
+    items: Array<{
+      code: string;
+      name: string;
+      description: string;
+      icon: string | null;
+      current: number;
+      target: number;
+    }>;
   } | null>(null);
   const achievementsCheck = useAchievementsCheck();
   useEffect(() => {
@@ -257,11 +263,22 @@ export default function ExplorePage() {
   const checkAchievementsAndShowModal = async () => {
     try {
       const result = await achievementsCheck.mutateAsync();
-      if (result.awarded > 0 && result.achievementNames?.length) {
+      if (result.awardedAchievements && result.awardedAchievements.length > 0) {
         setAchievementModalData({
           type: 'achievement',
-          count: result.awarded,
-          names: result.achievementNames,
+          items: result.awardedAchievements,
+        });
+      } else if (result.awarded > 0 && result.achievementNames?.length) {
+        setAchievementModalData({
+          type: 'achievement',
+          items: result.achievementNames.map((desc) => ({
+            code: '',
+            name: '',
+            description: desc,
+            icon: null,
+            current: 0,
+            target: 0,
+          })),
         });
       }
     } catch {

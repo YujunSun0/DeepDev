@@ -185,7 +185,18 @@ export function useAchievementsCheck() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      const { data } = await api.post<{ awarded: number; achievementNames?: string[] }>('/achievements/check');
+      const { data } = await api.post<{
+        awarded: number;
+        achievementNames?: string[];
+        awardedAchievements?: Array<{
+          code: string;
+          name: string;
+          description: string;
+          icon: string | null;
+          current: number;
+          target: number;
+        }>;
+      }>('/achievements/check');
       return data;
     },
     onSuccess: () => {
