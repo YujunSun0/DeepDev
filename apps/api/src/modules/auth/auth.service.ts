@@ -64,6 +64,12 @@ export class AuthService {
       throw new UnauthorizedException('이메일 또는 비밀번호가 올바르지 않습니다');
     }
 
+    if (!user.passwordHash) {
+      throw new UnauthorizedException(
+        `이 계정은 소셜 로그인으로 가입되었습니다. ${user.authProvider === 'google' ? 'Google' : user.authProvider === 'github' ? 'GitHub' : '소셜'}로 로그인해주세요.`,
+      );
+    }
+
     const isPasswordValid = await bcrypt.compare(
       dto.password,
       user.passwordHash,
@@ -141,6 +147,63 @@ export class AuthService {
     } catch {
       throw new BadRequestException('만료되었거나 유효하지 않은 링크입니다.');
     }
+  }
+
+  async findOrCreateOAuthUser(profile: {
+    provider: 'google' | 'github';
+    providerId: string;
+    email: string;
+    name: string | null;
+    avatarUrl: string | null;
+  }) {
+    let user = await this.usersService.findByProvider(profile.provider, profile.providerId);
+
+    if (user) {
+      return this.buildAuthResponse(user);
+    }
+
+    const existingByEmail = await this.usersService.findByEmail(profile.email);
+    if (existingByEmail) {
+      await this.usersService.updateProviderInfo(existingByEmail.id, {
+        authProvider: profile.provider,
+        authProviderId: profile.providerId,
+        avatarUrl: profile.avatarUrl,
+      });
+      user = await this.usersService.findById(existingByEmail.id);
+      if (!user) throw new BadRequestException('계정 연동 중 오류가 발생했습니다.');
+      return this.buildAuthResponse(user);
+    }
+
+    user = await this.usersService.create({
+      email: profile.email,
+      name: profile.name ?? undefined,
+      emailVerified: true,
+      authProvider: profile.provider,
+      authProviderId: profile.providerId,
+      avatarUrl: profile.avatarUrl ?? undefined,
+    });
+
+    return this.buildAuthResponse(user);
+  }
+
+  private buildAuthResponse(user: {
+    id: string;
+    email: string;
+    name: string | null;
+    planType: string;
+    preferredLanguage: string | null;
+  }) {
+    const token = this.generateToken(user.id, user.email);
+    return {
+      accessToken: token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        planType: user.planType,
+        preferredLanguage: user.preferredLanguage,
+      },
+    };
   }
 
   private generateToken(userId: string, email: string): string {

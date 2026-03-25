@@ -122,3 +122,16 @@ export async function verifyEmailAndLogin(token: string): Promise<VerifyEmailRes
   }
   return data;
 }
+
+export async function loginWithOAuthToken(accessToken: string): Promise<AuthUser | null> {
+  if (typeof window === 'undefined') return null;
+  localStorage.setItem(TOKEN_KEY, accessToken);
+  return refreshUser();
+}
+
+export function getOAuthAuthUrl(provider: 'google' | 'github'): string {
+  const base = typeof window !== 'undefined'
+    ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000')
+    : process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+  return `${base.replace(/\/$/, '')}/api/auth/${provider}`;
+}

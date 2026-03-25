@@ -7,16 +7,22 @@ export class UsersService {
 
   async create(data: {
     email: string;
-    passwordHash: string;
+    passwordHash?: string | null;
     name?: string;
     emailVerified?: boolean;
+    authProvider?: string | null;
+    authProviderId?: string | null;
+    avatarUrl?: string | null;
   }) {
     return this.prisma.user.create({
       data: {
         email: data.email,
-        passwordHash: data.passwordHash,
+        passwordHash: data.passwordHash ?? null,
         name: data.name ?? null,
         emailVerified: data.emailVerified ?? false,
+        authProvider: data.authProvider ?? null,
+        authProviderId: data.authProviderId ?? null,
+        avatarUrl: data.avatarUrl ?? null,
       },
     });
   }
@@ -31,6 +37,16 @@ export class UsersService {
   async findByEmail(email: string) {
     return this.prisma.user.findFirst({
       where: { email, deletedAt: null },
+    });
+  }
+
+  async findByProvider(provider: string, providerId: string) {
+    return this.prisma.user.findFirst({
+      where: {
+        authProvider: provider,
+        authProviderId: providerId,
+        deletedAt: null,
+      },
     });
   }
 
@@ -55,6 +71,24 @@ export class UsersService {
     return this.prisma.user.update({
       where: { id: userId },
       data: updateData,
+    });
+  }
+
+  async updateProviderInfo(
+    userId: string,
+    data: {
+      authProvider: string;
+      authProviderId: string;
+      avatarUrl?: string | null;
+    },
+  ) {
+    return this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        authProvider: data.authProvider,
+        authProviderId: data.authProviderId,
+        avatarUrl: data.avatarUrl ?? undefined,
+      },
     });
   }
 }

@@ -17,8 +17,11 @@ enum PlanType {
 model User {
   id                 String   @id @default(uuid())
   email              String   @unique
-  passwordHash       String   @map("password_hash")
+  passwordHash       String?  @map("password_hash")   // Optional: OAuth 사용자는 null
   name               String?
+  avatarUrl          String?  @map("avatar_url")      // OAuth 프로필 이미지
+  authProvider       String?  @map("auth_provider")    // "email" | "google" | "github"
+  authProviderId     String?  @map("auth_provider_id") // OAuth provider의 고유 ID
   emailVerified      Boolean  @default(false) @map("email_verified")
   planType           PlanType @default(FREE) @map("plan_type")
   preferredLanguage String?  @map("preferred_language") @db.VarChar(32)
@@ -34,6 +37,7 @@ model User {
   explorations     Exploration[]
   userAchievements UserAchievement[]
 
+  @@index([authProvider, authProviderId])
   @@map("users")
 }
 
