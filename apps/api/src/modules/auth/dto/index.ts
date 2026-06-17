@@ -25,3 +25,12 @@ export class ResendVerificationDto {
   @IsEmail({}, { message: '올바른 이메일 형식이 아닙니다' })
   email!: string;
 }
+
+export class ConfirmOAuthLinkDto {
+  @IsString()
+  linkToken!: string;
+
+  @IsString()
+  @IsOptional()
+  password?: string;
+}

@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { AuthGuard } from '@nestjs/passport';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import { RegisterRequestDto, LoginRequestDto, ResendVerificationDto } from './dto';
+import { RegisterRequestDto, LoginRequestDto, ResendVerificationDto, ConfirmOAuthLinkDto } from './dto';
 import type { GoogleProfile } from './strategies/google.strategy';
 import type { GithubProfile } from './strategies/github.strategy';
 
@@ -43,17 +43,7 @@ export class AuthController {
   @Get('google/callback')
   @UseGuards(AuthGuard('google'))
   async googleCallback(@Req() req: Request & { user?: GoogleProfile }, @Res() res: Response) {
-    const profile = req.user;
-    if (!profile) {
-      return res.redirect(this.getFrontendUrl('/login?error=oauth_failed'));
-    }
-    try {
-      const { accessToken, user } = await this.authService.findOrCreateOAuthUser(profile);
-      const url = `${this.getFrontendUrl('/login')}?token=${encodeURIComponent(accessToken)}&oauth=1`;
-      return res.redirect(url);
-    } catch {
-      return res.redirect(this.getFrontendUrl('/login?error=oauth_failed'));
-    }
+    return this.handleOAuthCallback(req.user, res);
   }
 
   @Get('github')
@@ -74,12 +64,41 @@ export class AuthController {
         this.getFrontendUrl('/login?error=github_email_required'),
       );
     }
-    try {
-      const { accessToken } = await this.authService.findOrCreateOAuthUser({
+    return this.handleOAuthCallback(
+      {
         ...profile,
         email: profile.email,
-      });
-      const url = `${this.getFrontendUrl('/login')}?token=${encodeURIComponent(accessToken)}&oauth=1`;
+      },
+      res,
+    );
+  }
+
+  @Get('oauth/link/preview')
+  previewOAuthLink(@Query('token') token: string) {
+    return this.authService.previewOAuthLink(token);
+  }
+
+  @Post('oauth/link')
+  confirmOAuthLink(@Body() dto: ConfirmOAuthLinkDto) {
+    return this.authService.confirmOAuthLink(dto.linkToken, dto.password);
+  }
+
+  private async handleOAuthCallback(
+    profile: GoogleProfile | (GithubProfile & { email: string }) | undefined,
+    res: Response,
+  ) {
+    if (!profile) {
+      return res.redirect(this.getFrontendUrl('/login?error=oauth_failed'));
+    }
+
+    try {
+      const result = await this.authService.processOAuthCallback(profile);
+      if (result.action === 'link_required') {
+        const url = `${this.getFrontendUrl('/auth/oauth/link')}?token=${encodeURIComponent(result.linkToken)}`;
+        return res.redirect(url);
+      }
+
+      const url = `${this.getFrontendUrl('/auth/oauth/callback')}?token=${encodeURIComponent(result.accessToken)}`;
       return res.redirect(url);
     } catch {
       return res.redirect(this.getFrontendUrl('/login?error=oauth_failed'));

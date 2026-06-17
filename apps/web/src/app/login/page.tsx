@@ -3,15 +3,14 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
-import { resendVerificationEmail, loginWithOAuthToken, getOAuthAuthUrl } from '@/lib/auth';
+import { resendVerificationEmail, getOAuthAuthUrl } from '@/lib/auth';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { ErrorMessage } from '@/components/ui';
 
 export default function LoginPage() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const { login, register } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
@@ -31,22 +30,13 @@ export default function LoginPage() {
   }, [searchParams]);
 
   useEffect(() => {
-    const token = searchParams.get('token');
-    const oauth = searchParams.get('oauth');
     const err = searchParams.get('error');
     if (err === 'oauth_failed') {
       setError('소셜 로그인에 실패했습니다. 잠시 후 다시 시도해주세요.');
     } else if (err === 'github_email_required') {
       setError('GitHub에서 이메일 정보를 가져올 수 없습니다. GitHub 설정에서 이메일 공개를 허용해주세요.');
-    } else if (token && oauth === '1') {
-      loginWithOAuthToken(token)
-        .then((user) => {
-          if (user) router.replace('/dashboard');
-          else setError('로그인 처리 중 오류가 발생했습니다.');
-        })
-        .catch(() => setError('로그인 처리 중 오류가 발생했습니다.'));
     }
-  }, [searchParams, router]);
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

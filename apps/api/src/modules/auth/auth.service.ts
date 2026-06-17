@@ -149,32 +149,39 @@ export class AuthService {
     }
   }
 
-  async findOrCreateOAuthUser(profile: {
+  async processOAuthCallback(profile: {
     provider: 'google' | 'github';
     providerId: string;
     email: string;
     name: string | null;
     avatarUrl: string | null;
   }) {
-    let user = await this.usersService.findByProvider(profile.provider, profile.providerId);
-
-    if (user) {
-      return this.buildAuthResponse(user);
+    const byProvider = await this.usersService.findByProvider(profile.provider, profile.providerId);
+    if (byProvider) {
+      return { action: 'login' as const, ...this.buildAuthResponse(byProvider) };
     }
 
     const existingByEmail = await this.usersService.findByEmail(profile.email);
     if (existingByEmail) {
-      await this.usersService.updateProviderInfo(existingByEmail.id, {
-        authProvider: profile.provider,
-        authProviderId: profile.providerId,
-        avatarUrl: profile.avatarUrl,
-      });
-      user = await this.usersService.findById(existingByEmail.id);
-      if (!user) throw new BadRequestException('계정 연동 중 오류가 발생했습니다.');
-      return this.buildAuthResponse(user);
+      if (
+        existingByEmail.authProvider === profile.provider &&
+        existingByEmail.authProviderId === profile.providerId
+      ) {
+        return { action: 'login' as const, ...this.buildAuthResponse(existingByEmail) };
+      }
+
+      const linkToken = this.generateOAuthLinkToken(profile);
+      return {
+        action: 'link_required' as const,
+        linkToken,
+        email: profile.email,
+        provider: profile.provider,
+        existingAuthProvider: existingByEmail.authProvider,
+        requiresPassword: !!existingByEmail.passwordHash,
+      };
     }
 
-    user = await this.usersService.create({
+    const user = await this.usersService.create({
       email: profile.email,
       name: profile.name ?? undefined,
       emailVerified: true,
@@ -183,7 +190,134 @@ export class AuthService {
       avatarUrl: profile.avatarUrl ?? undefined,
     });
 
+    return { action: 'login' as const, ...this.buildAuthResponse(user) };
+  }
+
+  previewOAuthLink(linkToken: string) {
+    const payload = this.parseOAuthLinkToken(linkToken);
+
+    return this.usersService.findByEmail(payload.email).then((existing) => {
+      if (!existing) {
+        throw new BadRequestException('연동할 계정을 찾을 수 없습니다. 다시 소셜 로그인을 시도해주세요.');
+      }
+      if (
+        existing.authProvider === payload.provider &&
+        existing.authProviderId === payload.providerId
+      ) {
+        throw new BadRequestException('이미 연동된 계정입니다. 로그인해주세요.');
+      }
+
+      return {
+        email: payload.email,
+        provider: payload.provider,
+        existingAuthProvider: existing.authProvider,
+        requiresPassword: !!existing.passwordHash,
+      };
+    });
+  }
+
+  async confirmOAuthLink(linkToken: string, password?: string) {
+    const payload = this.parseOAuthLinkToken(linkToken);
+    const existing = await this.usersService.findByEmail(payload.email);
+    if (!existing) {
+      throw new BadRequestException('연동할 계정을 찾을 수 없습니다. 다시 소셜 로그인을 시도해주세요.');
+    }
+
+    if (
+      existing.authProvider === payload.provider &&
+      existing.authProviderId === payload.providerId
+    ) {
+      return this.buildAuthResponse(existing);
+    }
+
+    if (existing.passwordHash) {
+      if (!password) {
+        throw new BadRequestException('기존 계정 비밀번호를 입력해주세요.');
+      }
+      const isPasswordValid = await bcrypt.compare(password, existing.passwordHash);
+      if (!isPasswordValid) {
+        throw new UnauthorizedException('비밀번호가 올바르지 않습니다.');
+      }
+    }
+
+    await this.usersService.updateProviderInfo(existing.id, {
+      authProvider: payload.provider,
+      authProviderId: payload.providerId,
+      avatarUrl: payload.avatarUrl,
+    });
+
+    if (!existing.emailVerified) {
+      await this.usersService.setEmailVerified(existing.id);
+    }
+
+    const user = await this.usersService.findById(existing.id);
+    if (!user) {
+      throw new BadRequestException('계정 연동 중 오류가 발생했습니다.');
+    }
+
     return this.buildAuthResponse(user);
+  }
+
+  /** @deprecated processOAuthCallback / confirmOAuthLink 사용 */
+  async findOrCreateOAuthUser(profile: {
+    provider: 'google' | 'github';
+    providerId: string;
+    email: string;
+    name: string | null;
+    avatarUrl: string | null;
+  }) {
+    const result = await this.processOAuthCallback(profile);
+    if (result.action === 'link_required') {
+      throw new BadRequestException('이미 등록된 이메일입니다. 계정 연동이 필요합니다.');
+    }
+    return { accessToken: result.accessToken, user: result.user };
+  }
+
+  private generateOAuthLinkToken(profile: {
+    provider: 'google' | 'github';
+    providerId: string;
+    email: string;
+    name: string | null;
+    avatarUrl: string | null;
+  }): string {
+    return this.jwtService.sign(
+      {
+        purpose: 'oauth-link',
+        provider: profile.provider,
+        providerId: profile.providerId,
+        email: profile.email,
+        name: profile.name,
+        avatarUrl: profile.avatarUrl,
+      },
+      { expiresIn: '15m' },
+    );
+  }
+
+  private parseOAuthLinkToken(linkToken: string): {
+    purpose: string;
+    provider: 'google' | 'github';
+    providerId: string;
+    email: string;
+    name: string | null;
+    avatarUrl: string | null;
+  } {
+    try {
+      const payload = this.jwtService.verify<{
+        purpose: string;
+        provider: 'google' | 'github';
+        providerId: string;
+        email: string;
+        name: string | null;
+        avatarUrl: string | null;
+      }>(linkToken);
+      if (payload.purpose !== 'oauth-link') {
+        throw new BadRequestException('유효하지 않은 연동 요청입니다.');
+      }
+      return payload;
+    } catch (error) {
+      if (error instanceof BadRequestException) throw error;
+      throw new BadRequestException('연동 요청이 만료되었거나 유효하지 않습니다. 다시 소셜 로그인을 시도해주세요.');
+    }
   }
 
   private buildAuthResponse(user: {

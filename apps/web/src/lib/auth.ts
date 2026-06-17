@@ -129,6 +129,36 @@ export async function loginWithOAuthToken(accessToken: string): Promise<AuthUser
   return refreshUser();
 }
 
+export interface OAuthLinkPreview {
+  email: string;
+  provider: 'google' | 'github';
+  existingAuthProvider: string | null;
+  requiresPassword: boolean;
+}
+
+export async function previewOAuthLink(linkToken: string): Promise<OAuthLinkPreview> {
+  const { data } = await api.get<OAuthLinkPreview>(
+    `/auth/oauth/link/preview?token=${encodeURIComponent(linkToken)}`,
+  );
+  return data;
+}
+
+export async function confirmOAuthLink(
+  linkToken: string,
+  password?: string,
+): Promise<AuthResponse> {
+  const { data } = await api.post<AuthResponse>('/auth/oauth/link', { linkToken, password });
+  saveAuth(data);
+  return data;
+}
+
+export function getProviderLabel(provider: string | null): string {
+  if (provider === 'google') return 'Google';
+  if (provider === 'github') return 'GitHub';
+  if (provider === 'email') return '이메일';
+  return '기존';
+}
+
 export function getOAuthAuthUrl(provider: 'google' | 'github'): string {
   const base = typeof window !== 'undefined'
     ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000')
