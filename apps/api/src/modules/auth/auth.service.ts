@@ -10,6 +10,9 @@ import { UsersService } from '../users/users.service';
 import { EmailService } from '../email/email.service';
 import { RegisterRequestDto, LoginRequestDto } from './dto';
 
+const DELETED_ACCOUNT_MESSAGE =
+  '탈퇴한 계정은 재가입할 수 없습니다. 탈퇴 후에는 복구가 불가능합니다.';
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -22,6 +25,11 @@ export class AuthService {
     const existing = await this.usersService.findByEmail(dto.email);
     if (existing) {
       throw new ConflictException('이미 등록된 이메일입니다');
+    }
+
+    const deleted = await this.usersService.findDeletedByEmail(dto.email);
+    if (deleted) {
+      throw new ConflictException(DELETED_ACCOUNT_MESSAGE);
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, 10);
@@ -161,6 +169,11 @@ export class AuthService {
       return { action: 'login' as const, ...this.buildAuthResponse(byProvider) };
     }
 
+    const deletedByEmail = await this.usersService.findDeletedByEmail(profile.email);
+    if (deletedByEmail) {
+      return { action: 'account_deleted' as const };
+    }
+
     const existingByEmail = await this.usersService.findByEmail(profile.email);
     if (existingByEmail) {
       if (
@@ -269,6 +282,9 @@ export class AuthService {
     const result = await this.processOAuthCallback(profile);
     if (result.action === 'link_required') {
       throw new BadRequestException('이미 등록된 이메일입니다. 계정 연동이 필요합니다.');
+    }
+    if (result.action === 'account_deleted') {
+      throw new ConflictException(DELETED_ACCOUNT_MESSAGE);
     }
     return { accessToken: result.accessToken, user: result.user };
   }

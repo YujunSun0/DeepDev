@@ -35,6 +35,8 @@ export default function LoginPage() {
       setError('소셜 로그인에 실패했습니다. 잠시 후 다시 시도해주세요.');
     } else if (err === 'github_email_required') {
       setError('GitHub에서 이메일 정보를 가져올 수 없습니다. GitHub 설정에서 이메일 공개를 허용해주세요.');
+    } else if (err === 'account_deleted') {
+      setError('탈퇴한 계정은 재가입할 수 없습니다. 탈퇴 후에는 복구가 불가능합니다.');
     }
   }, [searchParams]);
 

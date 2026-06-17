@@ -93,6 +93,9 @@ export class AuthController {
 
     try {
       const result = await this.authService.processOAuthCallback(profile);
+      if (result.action === 'account_deleted') {
+        return res.redirect(this.getFrontendUrl('/login?error=account_deleted'));
+      }
       if (result.action === 'link_required') {
         const url = `${this.getFrontendUrl('/auth/oauth/link')}?token=${encodeURIComponent(result.linkToken)}`;
         return res.redirect(url);

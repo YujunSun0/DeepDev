@@ -40,6 +40,12 @@ export class UsersService {
     });
   }
 
+  async findDeletedByEmail(email: string) {
+    return this.prisma.user.findFirst({
+      where: { email, deletedAt: { not: null } },
+    });
+  }
+
   async findByProvider(provider: string, providerId: string) {
     return this.prisma.user.findFirst({
       where: {
