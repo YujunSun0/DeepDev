@@ -44,20 +44,37 @@ function useTypewriter(text: string, speed = 12) {
   return { displayed, isDone };
 }
 
-function TypewriterBubble({ content, onDone }: { content: string; onDone: () => void }) {
+function TypewriterBubble({
+  content,
+  onDone,
+  onAppear,
+  onContentGrow,
+}: {
+  content: string;
+  onDone: () => void;
+  onAppear?: (row: HTMLElement) => void;
+  onContentGrow?: () => void;
+}) {
   const { displayed, isDone } = useTypewriter(content);
   const ref = useRef<HTMLDivElement>(null);
+  const hasScrolledToStartRef = useRef(false);
 
   useEffect(() => {
     if (isDone) onDone();
   }, [isDone, onDone]);
 
   useEffect(() => {
-    if (ref.current) {
-      const parent = ref.current.closest('[data-scroll-container]');
-      if (parent) parent.scrollTop = parent.scrollHeight;
+    if (hasScrolledToStartRef.current || !ref.current) return;
+    const row = ref.current.closest('[data-message-row]') as HTMLElement | null;
+    if (row) {
+      hasScrolledToStartRef.current = true;
+      onAppear?.(row);
     }
-  }, [displayed]);
+  }, [onAppear]);
+
+  useEffect(() => {
+    onContentGrow?.();
+  }, [displayed, onContentGrow]);
 
   return (
     <div ref={ref} className="inline">
@@ -127,6 +144,8 @@ export default function ExplorePage() {
   const justCreatedRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const prevMessagesLenRef = useRef(0);
+  const prevExplorationIdRef = useRef<string | null>(null);
   const activeExplorationIdRef = useRef<string | null>(activeExplorationId);
   const pendingUserMessageRef = useRef<string | null>(null);
   const backgroundResponseExplorationIdRef = useRef<string | null>(null);
@@ -178,13 +197,6 @@ export default function ExplorePage() {
     setTurnsLeft(activeExploration.turnsLeft);
   }, [activeExploration, pendingRequestExplorationId, loading, typing]);
 
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-      setShowScrollToBottom(false);
-    }
-  }, [localMessages, loading, pendingRequestExplorationId, activeExplorationId]);
-
   const checkScrollPosition = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -193,17 +205,51 @@ export default function ExplorePage() {
     setShowScrollToBottom(!isAtBottom);
   }, []);
 
+  const scrollToMessageTop = useCallback((row: HTMLElement) => {
+    const container = scrollRef.current;
+    if (!container) return;
+    const rowTop = row.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
+    container.scrollTo({ top: Math.max(0, rowTop - 16), behavior: 'smooth' });
+    requestAnimationFrame(checkScrollPosition);
+  }, [checkScrollPosition]);
+
   const scrollToBottom = useCallback(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
     setShowScrollToBottom(false);
   }, []);
+
+  useEffect(() => {
+    if (showNewChat) return;
+    const container = scrollRef.current;
+    if (!container) return;
+
+    const explorationChanged = prevExplorationIdRef.current !== activeExplorationId;
+    prevExplorationIdRef.current = activeExplorationId;
+
+    const lastMsg = localMessages[localMessages.length - 1];
+    const messagesGrew = localMessages.length > prevMessagesLenRef.current;
+    prevMessagesLenRef.current = localMessages.length;
+
+    if (explorationChanged) {
+      prevMessagesLenRef.current = localMessages.length;
+      container.scrollTop = container.scrollHeight;
+      setShowScrollToBottom(false);
+      return;
+    }
+
+    if (loading || (messagesGrew && lastMsg?.role === 'user')) {
+      container.scrollTop = container.scrollHeight;
+      setShowScrollToBottom(false);
+    }
+  }, [localMessages, loading, activeExplorationId, showNewChat]);
 
   const handleTypingDone = useCallback(() => {
     setTyping(false);
     setLocalMessages((prev) =>
       prev.map((m, i) => (i === prev.length - 1 && m.isTyping ? { ...m, isTyping: false } : m)),
     );
-  }, []);
+    requestAnimationFrame(checkScrollPosition);
+  }, [checkScrollPosition]);
 
   const handleCreateExploration = async () => {
     if (!selectedConceptId || !input.trim() || loading) return;
@@ -499,7 +545,11 @@ export default function ExplorePage() {
           ) : (
             <div className="mx-auto max-w-4xl space-y-4">
               {localMessages.map((msg, i) => (
-                <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div
+                  key={i}
+                  data-message-row
+                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
                   <div
                     className={`max-w-[90%] sm:max-w-[85%] rounded-2xl px-3 py-2.5 sm:px-4 sm:py-3 ${
                       msg.role === 'user'
@@ -509,7 +559,12 @@ export default function ExplorePage() {
                   >
                     {msg.role === 'assistant' ? (
                       msg.isTyping ? (
-                        <TypewriterBubble content={msg.content} onDone={handleTypingDone} />
+                        <TypewriterBubble
+                          content={msg.content}
+                          onDone={handleTypingDone}
+                          onAppear={scrollToMessageTop}
+                          onContentGrow={checkScrollPosition}
+                        />
                       ) : (
                         <MarkdownRenderer content={msg.content} />
                       )
