@@ -4,7 +4,7 @@
 import { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Loader2 } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { resendVerificationEmail, getOAuthAuthUrl } from '@/lib/auth';
 import { getApiErrorMessage } from '@/lib/api-error';
@@ -53,17 +53,34 @@ function LoginContent() {
     setDismissedQueryError(false);
   }, [queryErrorKey]);
 
-  const dismissError = () => {
-    setFormError('');
-    if (queryError) {
+  const clearQueryError = () => {
+    if (queryErrorKey) {
       setDismissedQueryError(true);
       router.replace('/login', { scroll: false });
     }
   };
 
+  const dismissError = () => {
+    setFormError('');
+    clearQueryError();
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
+    if (queryErrorKey) clearQueryError();
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPassword(e.target.value);
+    if (queryErrorKey) clearQueryError();
+  };
+
+  const isEmailVerificationError = formError.includes('이메일 인증');
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
+    clearQueryError();
     setLoading(true);
 
     try {
@@ -120,27 +137,44 @@ function LoginContent() {
 
           {error && (
             <div className="mb-5">
-              <ErrorMessage message={error} onDismiss={dismissError} />
-              {error.includes('이메일 인증') && (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    setResending(true);
-                    try {
-                      const res = await resendVerificationEmail(email);
-                      setFormError('');
-                      setSuccess(res.message);
-                    } catch (e) {
-                      setFormError(getApiErrorMessage(e));
-                    } finally {
-                      setResending(false);
-                    }
-                  }}
-                  disabled={resending || !email}
-                  className="mt-2 text-sm text-primary-600 hover:text-primary-500 disabled:opacity-50"
+              {isEmailVerificationError ? (
+                <div
+                  className="rounded-2xl bg-green-50 px-4 py-3.5 text-sm text-green-700"
+                  role="alert"
                 >
-                  {resending ? '전송 중...' : '인증 메일 다시 보내기'}
-                </button>
+                  <div className="flex items-start justify-between gap-3">
+                    <span>{formError}</span>
+                    <button
+                      type="button"
+                      onClick={() => setFormError('')}
+                      className="shrink-0 rounded-lg p-1.5 text-green-600 transition hover:bg-green-100 hover:text-green-800"
+                      aria-label="닫기"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setResending(true);
+                      try {
+                        const res = await resendVerificationEmail(email);
+                        setFormError('');
+                        setSuccess(res.message);
+                      } catch (e) {
+                        setFormError(getApiErrorMessage(e));
+                      } finally {
+                        setResending(false);
+                      }
+                    }}
+                    disabled={resending || !email}
+                    className="mt-2 text-sm font-medium text-green-700 hover:text-green-800 disabled:opacity-50"
+                  >
+                    {resending ? '전송 중...' : '인증 메일 다시 보내기'}
+                  </button>
+                </div>
+              ) : (
+                <ErrorMessage message={error} onDismiss={dismissError} />
               )}
             </div>
           )}
@@ -177,7 +211,7 @@ function LoginContent() {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={handleEmailChange}
                 required
                 className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3.5 text-sm text-gray-900 placeholder-gray-400 transition focus:border-primary-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-100"
                 placeholder="email@example.com"
@@ -190,7 +224,7 @@ function LoginContent() {
               <input
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={handlePasswordChange}
                 required
                 minLength={8}
                 className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-4 py-3.5 text-sm text-gray-900 placeholder-gray-400 transition focus:border-primary-300 focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary-100"
