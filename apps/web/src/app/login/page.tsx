@@ -1,25 +1,45 @@
 // apps/web/src/app/login/page.tsx
 'use client';
 
-import { useState, useEffect } from 'react';
+import { Suspense, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { resendVerificationEmail, getOAuthAuthUrl } from '@/lib/auth';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { ErrorMessage } from '@/components/ui';
 
-export default function LoginPage() {
+const LOGIN_QUERY_ERRORS: Record<string, string> = {
+  oauth_failed: '소셜 로그인에 실패했습니다. 잠시 후 다시 시도해주세요.',
+  github_email_required:
+    'GitHub에서 이메일 정보를 가져올 수 없습니다. GitHub 설정에서 이메일 공개를 허용해주세요.',
+  account_deleted:
+    '탈퇴한 계정은 재가입할 수 없습니다. 탈퇴 후에는 복구가 불가능합니다.',
+};
+
+function getQueryErrorMessage(errorKey: string | null): string {
+  if (!errorKey) return '';
+  return LOGIN_QUERY_ERRORS[errorKey] ?? '';
+}
+
+function LoginContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const { login, register } = useAuth();
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [error, setError] = useState('');
+  const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
+  const [dismissedQueryError, setDismissedQueryError] = useState(false);
+
+  const queryErrorKey = searchParams.get('error');
+  const queryError = dismissedQueryError ? '' : getQueryErrorMessage(queryErrorKey);
+  const error = formError || queryError;
 
   useEffect(() => {
     const registered = searchParams.get('registered');
@@ -30,19 +50,20 @@ export default function LoginPage() {
   }, [searchParams]);
 
   useEffect(() => {
-    const err = searchParams.get('error');
-    if (err === 'oauth_failed') {
-      setError('소셜 로그인에 실패했습니다. 잠시 후 다시 시도해주세요.');
-    } else if (err === 'github_email_required') {
-      setError('GitHub에서 이메일 정보를 가져올 수 없습니다. GitHub 설정에서 이메일 공개를 허용해주세요.');
-    } else if (err === 'account_deleted') {
-      setError('탈퇴한 계정은 재가입할 수 없습니다. 탈퇴 후에는 복구가 불가능합니다.');
+    setDismissedQueryError(false);
+  }, [queryErrorKey]);
+
+  const dismissError = () => {
+    setFormError('');
+    if (queryError) {
+      setDismissedQueryError(true);
+      router.replace('/login', { scroll: false });
     }
-  }, [searchParams]);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    setFormError('');
     setLoading(true);
 
     try {
@@ -52,7 +73,7 @@ export default function LoginPage() {
         await register(email, password, name || undefined);
       }
     } catch (err: unknown) {
-      setError(getApiErrorMessage(err));
+      setFormError(getApiErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -99,7 +120,7 @@ export default function LoginPage() {
 
           {error && (
             <div className="mb-5">
-              <ErrorMessage message={error} onDismiss={() => setError('')} />
+              <ErrorMessage message={error} onDismiss={dismissError} />
               {error.includes('이메일 인증') && (
                 <button
                   type="button"
@@ -107,10 +128,10 @@ export default function LoginPage() {
                     setResending(true);
                     try {
                       const res = await resendVerificationEmail(email);
-                      setError('');
+                      setFormError('');
                       setSuccess(res.message);
                     } catch (e) {
-                      setError(getApiErrorMessage(e));
+                      setFormError(getApiErrorMessage(e));
                     } finally {
                       setResending(false);
                     }
@@ -220,7 +241,7 @@ export default function LoginPage() {
 
           <div className="mt-6 text-center">
             <button
-              onClick={() => { setIsLogin(!isLogin); setError(''); setSuccess(''); }}
+              onClick={() => { setIsLogin(!isLogin); setFormError(''); setSuccess(''); }}
               className="text-sm text-gray-400 transition hover:text-primary-500"
             >
               {isLogin ? '계정이 없으신가요? ' : '이미 계정이 있으신가요? '}
@@ -238,5 +259,19 @@ export default function LoginPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen items-center justify-center bg-gray-50">
+          <Loader2 className="h-8 w-8 animate-spin text-primary-500" />
+        </div>
+      }
+    >
+      <LoginContent />
+    </Suspense>
   );
 }
