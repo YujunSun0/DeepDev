@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Compass, Send, Loader2, MessageCircle, Plus,
@@ -45,7 +44,7 @@ function useTypewriter(text: string, speed = 12) {
   return { displayed, isDone };
 }
 
-function TypewriterBubble({ content, onDone, onDisplayChange }: { content: string; onDone: () => void; onDisplayChange?: () => void }) {
+function TypewriterBubble({ content, onDone }: { content: string; onDone: () => void }) {
   const { displayed, isDone } = useTypewriter(content);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -54,8 +53,11 @@ function TypewriterBubble({ content, onDone, onDisplayChange }: { content: strin
   }, [isDone, onDone]);
 
   useEffect(() => {
-    onDisplayChange?.();
-  }, [displayed, onDisplayChange]);
+    if (ref.current) {
+      const parent = ref.current.closest('[data-scroll-container]');
+      if (parent) parent.scrollTop = parent.scrollHeight;
+    }
+  }, [displayed]);
 
   return (
     <div ref={ref} className="inline">
@@ -63,6 +65,27 @@ function TypewriterBubble({ content, onDone, onDisplayChange }: { content: strin
       {!isDone && <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-primary-400" />}
     </div>
   );
+}
+
+function appendExplorationMessages(
+  queryClient: ReturnType<typeof useQueryClient>,
+  explorationId: string,
+  userMessage: string,
+  assistantReply: string,
+  turnsLeft: number,
+) {
+  queryClient.setQueryData<ExplorationDetail>(['explorations', explorationId], (old) => {
+    if (!old) return old;
+    return {
+      ...old,
+      messages: [
+        ...old.messages,
+        { role: 'user', content: userMessage },
+        { role: 'assistant', content: assistantReply },
+      ],
+      turnsLeft,
+    };
+  });
 }
 
 /* ═══════════════════════════════════════════════════
@@ -124,28 +147,36 @@ export default function ExplorePage() {
   });
 
   useEffect(() => {
-    if (activeExploration) {
-      if (justCreatedRef.current) {
-        justCreatedRef.current = false;
-        setTurnsLeft(activeExploration.turnsLeft);
-        return;
-      }
-      let messages = activeExploration.messages.map((m) => ({ ...m, isTyping: false }));
-      if (pendingRequestExplorationId === activeExploration.id && pendingUserMessageRef.current) {
-        messages = [...messages, { role: 'user', content: pendingUserMessageRef.current, isTyping: false }];
-      }
-      const needsTypewriter = backgroundResponseExplorationIdRef.current === activeExploration.id;
-      if (needsTypewriter && messages.length > 0) {
-        const lastIdx = messages.length - 1;
-        if (messages[lastIdx].role === 'assistant') {
-          messages = messages.map((m, i) => (i === lastIdx ? { ...m, isTyping: true } : m));
-          backgroundResponseExplorationIdRef.current = null;
-        }
-      }
-      setLocalMessages(messages);
+    if (!activeExploration) return;
+
+    if (justCreatedRef.current) {
+      justCreatedRef.current = false;
       setTurnsLeft(activeExploration.turnsLeft);
+      return;
     }
-  }, [activeExploration, pendingRequestExplorationId]);
+
+    // 응답 대기·타이핑·낙관적 UI 중에는 서버 캐시로 덮어쓰지 않음
+    if (
+      loading ||
+      typing ||
+      pendingRequestExplorationId === activeExploration.id
+    ) {
+      return;
+    }
+
+    let messages = activeExploration.messages.map((m) => ({ ...m, isTyping: false }));
+    const needsTypewriter = backgroundResponseExplorationIdRef.current === activeExploration.id;
+    if (needsTypewriter && messages.length > 0) {
+      const lastIdx = messages.length - 1;
+      if (messages[lastIdx].role === 'assistant') {
+        messages = messages.map((m, i) => (i === lastIdx ? { ...m, isTyping: true } : m));
+        backgroundResponseExplorationIdRef.current = null;
+        setTyping(true);
+      }
+    }
+    setLocalMessages(messages);
+    setTurnsLeft(activeExploration.turnsLeft);
+  }, [activeExploration, pendingRequestExplorationId, loading, typing]);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -218,30 +249,27 @@ export default function ExplorePage() {
     try {
       const result = await explorationApi.sendMessage(requestForId, message);
       const userSwitched = activeExplorationIdRef.current !== requestForId;
-      setPendingRequestExplorationId(null);
-      pendingUserMessageRef.current = null;
+
+      appendExplorationMessages(
+        queryClient,
+        requestForId,
+        message,
+        result.reply,
+        result.turnsLeft,
+      );
+
       if (userSwitched) {
         backgroundResponseExplorationIdRef.current = requestForId;
-        queryClient.setQueryData<ExplorationDetail>(
-          ['explorations', requestForId],
-          (old) => {
-            if (!old) return old;
-            return {
-              ...old,
-              messages: [
-                ...old.messages,
-                { role: 'user', content: message },
-                { role: 'assistant', content: result.reply },
-              ],
-              turnsLeft: result.turnsLeft,
-            };
-          },
-        );
+        setPendingRequestExplorationId(null);
+        pendingUserMessageRef.current = null;
         queryClient.invalidateQueries({ queryKey: ['explorations'] });
         queryClient.invalidateQueries({ queryKey: ['usage'] });
         checkAchievementsAndShowModal();
         return;
       }
+
+      setPendingRequestExplorationId(null);
+      pendingUserMessageRef.current = null;
       setLoading(false);
       setTyping(true);
       setTurnsLeft(result.turnsLeft);
@@ -249,6 +277,7 @@ export default function ExplorePage() {
         ...prev,
         { role: 'assistant', content: result.reply, isTyping: true },
       ]);
+      queryClient.invalidateQueries({ queryKey: ['explorations'] });
       queryClient.invalidateQueries({ queryKey: ['usage'] });
       checkAchievementsAndShowModal();
     } catch (e: unknown) {
@@ -480,7 +509,7 @@ export default function ExplorePage() {
                   >
                     {msg.role === 'assistant' ? (
                       msg.isTyping ? (
-                        <TypewriterBubble content={msg.content} onDone={handleTypingDone} onDisplayChange={checkScrollPosition} />
+                        <TypewriterBubble content={msg.content} onDone={handleTypingDone} />
                       ) : (
                         <MarkdownRenderer content={msg.content} />
                       )
@@ -491,7 +520,7 @@ export default function ExplorePage() {
                 </div>
               ))}
 
-              {(loading || pendingRequestExplorationId === activeExplorationId) && (
+              {loading && (
                 <div className="flex justify-start">
                   <div className="flex items-center gap-1.5 rounded-2xl bg-white px-4 py-3 shadow-sm border border-gray-100">
                     <span className="h-2 w-2 animate-bounce rounded-full bg-gray-300" style={{ animationDelay: '0ms' }} />
