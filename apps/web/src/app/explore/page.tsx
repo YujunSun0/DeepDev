@@ -47,30 +47,18 @@ function useTypewriter(text: string, speed = 12) {
 function TypewriterBubble({
   content,
   onDone,
-  onAppear,
   onContentGrow,
 }: {
   content: string;
   onDone: () => void;
-  onAppear?: (row: HTMLElement) => void;
   onContentGrow?: () => void;
 }) {
   const { displayed, isDone } = useTypewriter(content);
   const ref = useRef<HTMLDivElement>(null);
-  const hasScrolledToStartRef = useRef(false);
 
   useEffect(() => {
     if (isDone) onDone();
   }, [isDone, onDone]);
-
-  useEffect(() => {
-    if (hasScrolledToStartRef.current || !ref.current) return;
-    const row = ref.current.closest('[data-message-row]') as HTMLElement | null;
-    if (row) {
-      hasScrolledToStartRef.current = true;
-      onAppear?.(row);
-    }
-  }, [onAppear]);
 
   useEffect(() => {
     onContentGrow?.();
@@ -144,6 +132,7 @@ export default function ExplorePage() {
   const justCreatedRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const [bottomSpacerHeight, setBottomSpacerHeight] = useState(0);
   const prevMessagesLenRef = useRef(0);
   const prevExplorationIdRef = useRef<string | null>(null);
   const activeExplorationIdRef = useRef<string | null>(activeExplorationId);
@@ -205,18 +194,34 @@ export default function ExplorePage() {
     setShowScrollToBottom(!isAtBottom);
   }, []);
 
-  const scrollToMessageTop = useCallback((row: HTMLElement) => {
+  const getResponseSpacerHeight = useCallback(() => {
+    const container = scrollRef.current;
+    if (!container) return 280;
+    return Math.max(Math.floor(container.clientHeight * 0.55), 280);
+  }, []);
+
+  const scrollToBottom = useCallback((smooth = true) => {
     const container = scrollRef.current;
     if (!container) return;
-    const rowTop = row.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
-    container.scrollTo({ top: Math.max(0, rowTop - 16), behavior: 'smooth' });
-    requestAnimationFrame(checkScrollPosition);
-  }, [checkScrollPosition]);
-
-  const scrollToBottom = useCallback(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+    if (smooth) {
+      container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+    } else {
+      container.scrollTop = container.scrollHeight;
+    }
     setShowScrollToBottom(false);
   }, []);
+
+  const scrollToResponseAnchor = useCallback(() => {
+    setBottomSpacerHeight(getResponseSpacerHeight());
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const container = scrollRef.current;
+        if (!container) return;
+        container.scrollTop = container.scrollHeight;
+        setShowScrollToBottom(false);
+      });
+    });
+  }, [getResponseSpacerHeight]);
 
   useEffect(() => {
     if (showNewChat) return;
@@ -231,20 +236,26 @@ export default function ExplorePage() {
     prevMessagesLenRef.current = localMessages.length;
 
     if (explorationChanged) {
+      setBottomSpacerHeight(0);
       prevMessagesLenRef.current = localMessages.length;
-      container.scrollTop = container.scrollHeight;
-      setShowScrollToBottom(false);
+      scrollToBottom(false);
       return;
     }
 
-    if (loading || (messagesGrew && lastMsg?.role === 'user')) {
-      container.scrollTop = container.scrollHeight;
-      setShowScrollToBottom(false);
+    // 질문 전송·답변 도착: 아래 여백을 두고 스크롤 (ChatGPT 스타일)
+    if (messagesGrew && lastMsg?.role === 'user') {
+      scrollToResponseAnchor();
+      return;
     }
-  }, [localMessages, loading, activeExplorationId, showNewChat]);
+
+    if (messagesGrew && lastMsg?.role === 'assistant' && lastMsg?.isTyping) {
+      scrollToResponseAnchor();
+    }
+  }, [localMessages, activeExplorationId, showNewChat, scrollToBottom, scrollToResponseAnchor]);
 
   const handleTypingDone = useCallback(() => {
     setTyping(false);
+    setBottomSpacerHeight(0);
     setLocalMessages((prev) =>
       prev.map((m, i) => (i === prev.length - 1 && m.isTyping ? { ...m, isTyping: false } : m)),
     );
@@ -278,6 +289,7 @@ export default function ExplorePage() {
       if (activeExplorationIdRef.current !== null) return;
       setError(getApiErrorMessage(e));
       setLoading(false);
+      setBottomSpacerHeight(0);
     }
   };
 
@@ -332,6 +344,7 @@ export default function ExplorePage() {
       if (activeExplorationIdRef.current !== requestForId) return;
       setError(getApiErrorMessage(e));
       setLoading(false);
+      setBottomSpacerHeight(0);
     }
   };
 
@@ -382,6 +395,7 @@ export default function ExplorePage() {
     if (typeof window !== 'undefined' && window.innerWidth < 1024) setSidebarOpen(false);
     setTyping(false);
     setLoading(false);
+    setBottomSpacerHeight(0);
   };
 
   const startNewChat = () => {
@@ -393,6 +407,7 @@ export default function ExplorePage() {
     setTyping(false);
     setTurnsLeft(20);
     setSelectedConceptId('');
+    setBottomSpacerHeight(0);
   };
 
   return (
@@ -547,7 +562,6 @@ export default function ExplorePage() {
               {localMessages.map((msg, i) => (
                 <div
                   key={i}
-                  data-message-row
                   className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
@@ -562,7 +576,6 @@ export default function ExplorePage() {
                         <TypewriterBubble
                           content={msg.content}
                           onDone={handleTypingDone}
-                          onAppear={scrollToMessageTop}
                           onContentGrow={checkScrollPosition}
                         />
                       ) : (
@@ -590,6 +603,11 @@ export default function ExplorePage() {
                   {error}
                 </div>
               )}
+
+              {/* 답변 대기·타이핑 중 ChatGPT처럼 아래 여백 확보 */}
+              {(loading || typing) && bottomSpacerHeight > 0 && (
+                <div aria-hidden style={{ height: bottomSpacerHeight }} />
+              )}
             </div>
           )}
         </div>
@@ -599,7 +617,7 @@ export default function ExplorePage() {
           {!showNewChat && showScrollToBottom && (
             <div className="absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2">
               <button
-                onClick={scrollToBottom}
+                onClick={() => scrollToBottom()}
                 className="flex h-8 w-8 items-center justify-center rounded-full bg-white shadow-md ring-1 ring-gray-200 transition hover:bg-gray-50 hover:shadow-lg"
                 title="최하단으로"
               >
