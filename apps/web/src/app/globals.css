@@ -40,6 +40,36 @@ body {
   animation: tooltip-in 150ms ease-out;
 }
 
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-toast-in {
+  animation: toast-in 250ms ease-out;
+}
+
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(1rem);
+  }
+}
+
+.animate-toast-out {
+  animation: toast-out 200ms ease-in forwards;
+}
+
 /* localStorage 접힘 상태 — React hydrate 전 첫 페인트용 */
 @media (min-width: 1024px) {
   html.sidebar-collapsed [data-desktop-sidebar] {
