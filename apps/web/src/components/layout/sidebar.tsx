@@ -1,16 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
 import { useUsage } from '@/hooks/use-api';
+import { useSidebarCollapsed } from '@/hooks/use-sidebar-collapsed';
 import {
   LayoutDashboard, GraduationCap, ClipboardList, BarChart3,
   MessageCircle, CreditCard, LogOut, ChevronLeft,
   Menu, Zap, X, Sparkles, Settings, Trophy,
 } from 'lucide-react';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
+import { Tooltip } from '@/components/ui/tooltip';
 
 const NAV_SECTIONS = [
   {
@@ -44,17 +46,63 @@ function formatTokens(n: number) {
   return String(n);
 }
 
+function SidebarLabel({
+  show,
+  children,
+  className = '',
+}: {
+  show: boolean;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <span
+      className={`overflow-hidden whitespace-nowrap transition-[opacity,max-width] duration-200 ease-out ${
+        show ? 'max-w-[160px] opacity-100 delay-100' : 'max-w-0 opacity-0 delay-0'
+      } ${className}`}
+      aria-hidden={!show}
+    >
+      {children}
+    </span>
+  );
+}
+
 export function Sidebar() {
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const { data: usage } = useUsage();
-  const [collapsed, setCollapsed] = useState(false);
+  const { collapsed, setCollapsed, hydrated } = useSidebarCollapsed();
+  const [showLabels, setShowLabels] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
+
+  useEffect(() => {
+    if (hydrated) {
+      setShowLabels(!collapsed);
+    }
+  }, [hydrated, collapsed]);
+
+  const handleToggleCollapsed = useCallback(() => {
+    setCollapsed((prev) => {
+      if (!prev) {
+        setShowLabels(false);
+      }
+      return !prev;
+    });
+  }, [setCollapsed]);
+
+  const handleSidebarTransitionEnd = useCallback(
+    (e: React.TransitionEvent<HTMLElement>) => {
+      if (e.propertyName === 'width' && !collapsed) {
+        setShowLabels(true);
+      }
+    },
+    [collapsed],
+  );
 
   if (!user) return null;
 
@@ -71,44 +119,72 @@ export function Sidebar() {
       )
     : 0;
 
-  const sidebarContent = (
-    <div className="flex h-full flex-col">
+  const showCollapsedTooltips = collapsed && hydrated;
+
+  const renderSidebarContent = (compact: boolean, { forceLabels = false, showMobileClose = false } = {}) => {
+    const labelsVisible = !compact && (forceLabels || showLabels);
+
+    return (
+    <div className="flex h-full flex-col overflow-hidden">
       {/* Logo */}
-      <div className="flex h-16 items-center justify-between px-5">
-        <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-primary-500">
-            <Sparkles className="h-4 w-4 text-white" />
-          </div>
-          {!collapsed && (
-            <span className="text-lg font-extrabold">
+      {compact ? (
+        <div className="flex h-16 flex-col items-center justify-center gap-0.5 px-2">
+          <Tooltip content="DeepDev" disabled={!showCollapsedTooltips}>
+            <Link href="/dashboard" className="flex items-center justify-center">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary-500">
+                <Sparkles className="h-4 w-4 text-white" />
+              </div>
+            </Link>
+          </Tooltip>
+          <Tooltip content="사이드바 펼치기" disabled={!showCollapsedTooltips}>
+            <button
+              onClick={handleToggleCollapsed}
+              className="hidden rounded-lg p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 lg:block"
+            >
+              <ChevronLeft className="h-3.5 w-3.5 rotate-180" />
+            </button>
+          </Tooltip>
+        </div>
+      ) : (
+        <div className="relative flex h-16 items-center justify-between px-5">
+          <Link href="/dashboard" className="flex min-w-0 items-center gap-2">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary-500">
+              <Sparkles className="h-4 w-4 text-white" />
+            </div>
+            <SidebarLabel show={labelsVisible} className="text-lg font-extrabold">
               <span className="text-primary-500">Deep</span>
               <span className="text-gray-900">Dev</span>
-            </span>
-          )}
-        </Link>
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="hidden rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 lg:block"
-        >
-          <ChevronLeft className={`h-4 w-4 transition-transform ${collapsed ? 'rotate-180' : ''}`} />
-        </button>
-        <button
-          onClick={() => setMobileOpen(false)}
-          className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 lg:hidden"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
+            </SidebarLabel>
+          </Link>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleToggleCollapsed}
+              className="hidden rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 lg:block"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            {showMobileClose && (
+              <button
+                onClick={() => setMobileOpen(false)}
+                className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 lg:hidden"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Nav Sections */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4">
+      <nav className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4">
         {NAV_SECTIONS.map((section) => (
           <div key={section.title} className="mb-6">
-            {!collapsed && (
-              <p className="mb-2 px-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                {section.title}
-              </p>
-            )}
+            <SidebarLabel
+              show={labelsVisible}
+              className="mb-2 block px-3 text-[10px] font-bold uppercase tracking-wider text-gray-400"
+            >
+              {section.title}
+            </SidebarLabel>
             <div className="space-y-1">
               {section.items.map((item) => {
                 const Icon = item.icon;
@@ -116,19 +192,30 @@ export function Sidebar() {
                   pathname === item.href ||
                   (item.href !== '/dashboard' && pathname.startsWith(item.href));
                 return (
-                  <Link
+                  <Tooltip
                     key={item.href}
-                    href={item.href}
-                    className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
-                      isActive
-                        ? 'bg-primary-50 text-primary-600'
-                        : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-                    } ${collapsed ? 'justify-center' : ''}`}
-                    title={collapsed ? item.label : undefined}
+                    content={item.label}
+                    disabled={!showCollapsedTooltips || !compact}
+                    className="w-full"
                   >
-                    <Icon className={`h-[18px] w-[18px] shrink-0 ${isActive ? 'text-primary-500' : 'text-gray-400 group-hover:text-gray-600'}`} />
-                    {!collapsed && <span>{item.label}</span>}
-                  </Link>
+                    <Link
+                      href={item.href}
+                      className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                        isActive
+                          ? 'bg-primary-50 text-primary-600'
+                          : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
+                      } ${compact ? 'justify-center px-2' : ''}`}
+                    >
+                      <Icon
+                        className={`h-[18px] w-[18px] shrink-0 ${
+                          isActive ? 'text-primary-500' : 'text-gray-400 group-hover:text-gray-600'
+                        }`}
+                      />
+                      <SidebarLabel show={labelsVisible}>
+                        {item.label}
+                      </SidebarLabel>
+                    </Link>
+                  </Tooltip>
                 );
               })}
             </div>
@@ -137,8 +224,8 @@ export function Sidebar() {
       </nav>
 
       {/* Usage Bar */}
-      {!collapsed && usage && (
-        <div className="mx-3 mb-4 rounded-2xl bg-gray-50 p-4">
+      {labelsVisible && usage && (
+        <div className="mx-3 mb-4 shrink-0 rounded-2xl bg-gray-50 p-4">
           <div className="mb-2 flex items-center justify-between">
             <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
               이번 달 사용량
@@ -189,12 +276,17 @@ export function Sidebar() {
       )}
 
       {/* User Profile */}
-      <div className={`border-t border-gray-100 p-3 ${collapsed ? 'flex flex-col items-center gap-2' : ''}`}>
-        <div className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ${collapsed ? 'flex-col px-0' : ''}`}>
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-100 text-sm font-bold text-primary-600">
-            {(user.name ?? user.email)[0].toUpperCase()}
-          </div>
-          {!collapsed && (
+      <div className={`shrink-0 border-t border-gray-100 p-3 ${compact ? 'flex flex-col items-center' : ''}`}>
+        <div className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ${compact ? 'flex-col px-0' : ''}`}>
+          <Tooltip
+            content={user.name ?? user.email.split('@')[0]}
+            disabled={!showCollapsedTooltips || !compact}
+          >
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-100 text-sm font-bold text-primary-600">
+              {(user.name ?? user.email)[0].toUpperCase()}
+            </div>
+          </Tooltip>
+          {labelsVisible && (
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-semibold text-gray-800">
                 {user.name ?? user.email.split('@')[0]}
@@ -207,17 +299,19 @@ export function Sidebar() {
               </div>
             </div>
           )}
-          <button
-            onClick={() => setLogoutConfirmOpen(true)}
-            className={`shrink-0 rounded-lg p-2 text-gray-400 transition hover:bg-red-50 hover:text-red-500 ${collapsed ? '' : ''}`}
-            title="로그아웃"
-          >
-            <LogOut className="h-4 w-4" />
-          </button>
+          <Tooltip content="로그아웃" disabled={!showCollapsedTooltips || !compact}>
+            <button
+              onClick={() => setLogoutConfirmOpen(true)}
+              className="shrink-0 rounded-lg p-2 text-gray-400 transition hover:bg-red-50 hover:text-red-500"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </Tooltip>
         </div>
       </div>
     </div>
-  );
+    );
+  };
 
   return (
     <>
@@ -239,20 +333,23 @@ export function Sidebar() {
 
       {/* Mobile sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-64 transform border-r border-gray-100 bg-white transition-transform duration-300 lg:hidden ${
+        className={`fixed inset-y-0 left-0 z-50 w-64 transform border-r border-gray-100 bg-white transition-transform duration-300 ease-in-out lg:hidden ${
           mobileOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        {sidebarContent}
+        {renderSidebarContent(false, { forceLabels: true, showMobileClose: true })}
       </aside>
 
       {/* Desktop sidebar */}
       <aside
-        className={`sticky top-0 hidden h-screen shrink-0 border-r border-gray-100 bg-white transition-all duration-300 lg:block ${
+        onTransitionEnd={handleSidebarTransitionEnd}
+        className={`sticky top-0 hidden h-screen shrink-0 overflow-hidden border-r border-gray-100 bg-white transition-[width] duration-300 ease-in-out lg:block ${
           collapsed ? 'w-[72px]' : 'w-64'
         }`}
       >
-        {sidebarContent}
+        <div className="relative h-full">
+          {renderSidebarContent(collapsed)}
+        </div>
       </aside>
 
       <ConfirmModal
