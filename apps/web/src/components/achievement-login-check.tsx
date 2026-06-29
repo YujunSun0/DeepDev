@@ -38,7 +38,7 @@ type ModalData =
 export function AchievementLoginCheck() {
   const achievementsCheck = useAchievementsCheck();
   const ranRef = useRef(false);
-  const [modalData, setModalData] = useState<ModalData | null>(null);
+  const [modalQueue, setModalQueue] = useState<ModalData[]>([]);
 
   useEffect(() => {
     if (ranRef.current) return;
@@ -52,16 +52,12 @@ export function AchievementLoginCheck() {
     (async () => {
       try {
         const result = await achievementsCheck.mutateAsync();
+        const queue: ModalData[] = [];
 
-        if (result.awardedAchievements && result.awardedAchievements.length > 0) {
-          setModalData({ type: 'achievement', items: result.awardedAchievements });
-          localStorage.setItem(storageKey, '1');
-          return;
-        }
-
+        // 출석(연속 학습 진행) 알림을 먼저 — 신규 업적 달성보다 우선
         if (result.progressNotification) {
           const p = result.progressNotification;
-          setModalData({
+          queue.push({
             type: 'progress',
             code: p.code,
             name: p.name,
@@ -71,7 +67,27 @@ export function AchievementLoginCheck() {
             target: p.target,
             message: p.message,
           });
+        }
+
+        if (result.awardedAchievements && result.awardedAchievements.length > 0) {
+          queue.push({ type: 'achievement', items: result.awardedAchievements });
+        } else if (result.awarded > 0 && result.achievementNames?.length) {
+          queue.push({
+            type: 'achievement',
+            items: result.achievementNames.map((desc) => ({
+              code: '',
+              name: '',
+              description: desc,
+              icon: null,
+              current: 0,
+              target: 0,
+            })),
+          });
+        }
+
+        if (queue.length > 0) {
           localStorage.setItem(storageKey, '1');
+          setModalQueue(queue);
         }
       } catch {
         // 출석/업적 체크 실패는 무시
@@ -79,11 +95,13 @@ export function AchievementLoginCheck() {
     })();
   }, [achievementsCheck]);
 
+  const currentModal = modalQueue[0] ?? null;
+
   return (
     <AchievementModal
-      open={modalData != null}
-      onClose={() => setModalData(null)}
-      data={modalData}
+      open={currentModal != null}
+      onClose={() => setModalQueue((q) => q.slice(1))}
+      data={currentModal}
     />
   );
 }
