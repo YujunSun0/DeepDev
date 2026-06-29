@@ -70,7 +70,7 @@ export function Tooltip({
   shortcut,
   side = 'right',
   disabled = false,
-  delay = 400,
+  delay = 0,
   children,
   className = '',
 }: TooltipProps) {

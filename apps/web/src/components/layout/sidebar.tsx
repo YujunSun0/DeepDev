@@ -57,8 +57,8 @@ function SidebarLabel({
 }) {
   return (
     <span
-      className={`overflow-hidden whitespace-nowrap transition-[opacity,max-width] duration-200 ease-out ${
-        show ? 'max-w-[160px] opacity-100 delay-100' : 'max-w-0 opacity-0 delay-0'
+      className={`overflow-hidden whitespace-nowrap transition-[opacity,max-width] duration-150 ease-out ${
+        show ? 'max-w-[160px] opacity-100' : 'max-w-0 opacity-0'
       } ${className}`}
       aria-hidden={!show}
     >
@@ -82,21 +82,15 @@ export function Sidebar() {
 
   const handleToggleCollapsed = useCallback(() => {
     setCollapsed((prev) => {
-      if (!prev) {
+      if (prev) {
+        // 펼칠 때: 너비 애니메이션과 함께 라벨 표시 (transitionend 대기 없음)
+        setShowLabels(true);
+      } else {
         setShowLabels(false);
       }
       return !prev;
     });
   }, [setCollapsed]);
-
-  const handleSidebarTransitionEnd = useCallback(
-    (e: React.TransitionEvent<HTMLElement>) => {
-      if (e.propertyName === 'width' && !collapsed) {
-        setShowLabels(true);
-      }
-    },
-    [collapsed],
-  );
 
   if (!user) return null;
 
@@ -328,7 +322,6 @@ export function Sidebar() {
       <aside
         data-desktop-sidebar
         suppressHydrationWarning
-        onTransitionEnd={handleSidebarTransitionEnd}
         className={`sticky top-0 hidden h-screen shrink-0 overflow-hidden border-r border-gray-100 bg-white transition-[width] duration-300 ease-in-out lg:block ${
           collapsed ? 'w-[72px]' : 'w-64'
         }`}
