@@ -45,7 +45,7 @@ export function AchievementLoginCheck() {
     ranRef.current = true;
 
     const storageKey = `${ATTENDANCE_MODAL_KEY_PREFIX}${todayKey()}`;
-    if (typeof window !== 'undefined' && sessionStorage.getItem(storageKey)) {
+    if (typeof window !== 'undefined' && localStorage.getItem(storageKey)) {
       return;
     }
 
@@ -55,7 +55,7 @@ export function AchievementLoginCheck() {
 
         if (result.awardedAchievements && result.awardedAchievements.length > 0) {
           setModalData({ type: 'achievement', items: result.awardedAchievements });
-          sessionStorage.setItem(storageKey, '1');
+          localStorage.setItem(storageKey, '1');
           return;
         }
 
@@ -71,7 +71,7 @@ export function AchievementLoginCheck() {
             target: p.target,
             message: p.message,
           });
-          sessionStorage.setItem(storageKey, '1');
+          localStorage.setItem(storageKey, '1');
         }
       } catch {
         // 출석/업적 체크 실패는 무시

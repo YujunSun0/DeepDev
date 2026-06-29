@@ -80,22 +80,28 @@ export class AchievementsService {
     return { records, awards };
   }
 
-  /** 오늘 출석(로그인) 기록 — 연속 학습 streak에 반영 */
-  async recordDailyAttendance(userId: string) {
+  /** 오늘 출석(로그인) 기록 — 연속 학습 streak에 반영. @returns 오늘 첫 출석이면 true */
+  async recordDailyAttendance(userId: string): Promise<boolean> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const existing = await this.prisma.userDailyAttendance.findUnique({
+      where: { userId_date: { userId, date: today } },
+    });
     await this.prisma.userDailyAttendance.upsert({
       where: { userId_date: { userId, date: today } },
       create: { userId, date: today },
       update: {},
     });
+    return !existing;
   }
 
   /** 출석 기록 + 업적 검사 + 진행률 알림 (로그인/대시보드 진입용) */
   async checkOnLogin(userId: string) {
-    await this.recordDailyAttendance(userId);
+    const isFirstAttendanceToday = await this.recordDailyAttendance(userId);
     const awardResult = await this.checkAndAward(userId);
-    const progressNotification = await this.getProgressNotification(userId);
+    const progressNotification = isFirstAttendanceToday
+      ? await this.getProgressNotification(userId)
+      : null;
     return {
       ...awardResult,
       progressNotification: progressNotification ?? undefined,
