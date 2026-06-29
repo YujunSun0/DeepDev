@@ -196,6 +196,15 @@ export function useAchievementsCheck() {
           current: number;
           target: number;
         }>;
+        progressNotification?: {
+          code: string;
+          name: string;
+          description: string;
+          icon: string | null;
+          current: number;
+          target: number;
+          message: string;
+        };
       }>('/achievements/check');
       return data;
     },

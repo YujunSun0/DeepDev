@@ -36,6 +36,7 @@ model User {
   masteries        UserMastery[]
   explorations     Exploration[]
   userAchievements UserAchievement[]
+  dailyAttendances UserDailyAttendance[]
 
   @@index([authProvider, authProviderId])
   @@map("users")
@@ -136,4 +137,16 @@ model UserAchievement {
 
   @@unique([userId, achievementId])
   @@map("user_achievements")
+}
+
+model UserDailyAttendance {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  date      DateTime @db.Date @map("date")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date])
+  @@map("user_daily_attendances")
 }

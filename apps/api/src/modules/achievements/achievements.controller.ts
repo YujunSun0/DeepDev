@@ -23,6 +23,6 @@ export class AchievementsController {
 
   @Post('check')
   check(@CurrentUser() user: CurrentUserPayload) {
-    return this.achievementsService.checkAndAward(user.id);
+    return this.achievementsService.checkOnLogin(user.id);
   }
 }

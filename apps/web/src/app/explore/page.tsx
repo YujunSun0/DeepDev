@@ -111,17 +111,30 @@ export default function ExplorePage() {
   const [localMessages, setLocalMessages] = useState<(ExplorationMessage & { isTyping?: boolean })[]>([]);
   const [turnsLeft, setTurnsLeft] = useState(20);
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [achievementModalData, setAchievementModalData] = useState<{
-    type: 'achievement';
-    items: Array<{
-      code: string;
-      name: string;
-      description: string;
-      icon: string | null;
-      current: number;
-      target: number;
-    }>;
-  } | null>(null);
+  const [achievementModalData, setAchievementModalData] = useState<
+    | {
+        type: 'achievement';
+        items: Array<{
+          code: string;
+          name: string;
+          description: string;
+          icon: string | null;
+          current: number;
+          target: number;
+        }>;
+      }
+    | {
+        type: 'progress';
+        code: string;
+        name: string;
+        description: string;
+        icon: string | null;
+        current: number;
+        target: number;
+        message: string;
+      }
+    | null
+  >(null);
   const achievementsCheck = useAchievementsCheck();
   useEffect(() => {
     const onResize = () => setSidebarOpen(window.innerWidth >= 1024);
@@ -355,6 +368,18 @@ export default function ExplorePage() {
         setAchievementModalData({
           type: 'achievement',
           items: result.awardedAchievements,
+        });
+      } else if (result.progressNotification) {
+        const p = result.progressNotification;
+        setAchievementModalData({
+          type: 'progress',
+          code: p.code,
+          name: p.name,
+          description: p.description,
+          icon: p.icon,
+          current: p.current,
+          target: p.target,
+          message: p.message,
         });
       } else if (result.awarded > 0 && result.achievementNames?.length) {
         setAchievementModalData({

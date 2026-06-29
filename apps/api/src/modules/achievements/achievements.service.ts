@@ -80,6 +80,28 @@ export class AchievementsService {
     return { records, awards };
   }
 
+  /** 오늘 출석(로그인) 기록 — 연속 학습 streak에 반영 */
+  async recordDailyAttendance(userId: string) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    await this.prisma.userDailyAttendance.upsert({
+      where: { userId_date: { userId, date: today } },
+      create: { userId, date: today },
+      update: {},
+    });
+  }
+
+  /** 출석 기록 + 업적 검사 + 진행률 알림 (로그인/대시보드 진입용) */
+  async checkOnLogin(userId: string) {
+    await this.recordDailyAttendance(userId);
+    const awardResult = await this.checkAndAward(userId);
+    const progressNotification = await this.getProgressNotification(userId);
+    return {
+      ...awardResult,
+      progressNotification: progressNotification ?? undefined,
+    };
+  }
+
   async checkAndAward(userId: string) {
     const stats = await this.computeStats(userId);
     const achievements = await this.prisma.achievement.findMany({
@@ -142,7 +164,7 @@ export class AchievementsService {
   /** 진행률 알림: 달성은 아니지만 조건 부합 시 (연속 학습왕, 새벽형, 빠른 학습자) */
   async getProgressNotification(
     userId: string,
-    lastSessionCreatedAt: Date,
+    lastSessionCreatedAt?: Date,
   ): Promise<{
     code: string;
     name: string;
@@ -188,8 +210,8 @@ export class AchievementsService {
       }
     }
 
-    const h = lastSessionCreatedAt.getHours();
-    if (h >= 5 && h < 7 && stats.earlyBirdCount >= 1) {
+    const h = lastSessionCreatedAt?.getHours();
+    if (h != null && h >= 5 && h < 7 && stats.earlyBirdCount >= 1) {
       const nextTarget = stats.earlyBirdCount < 5 ? 5 : stats.earlyBirdCount < 20 ? 20 : null;
       if (nextTarget != null && !unlockedCodes.has(nextTarget === 5 ? 'EARLY_BIRD_5' : 'EARLY_BIRD_20')) {
         const a = achievements.find((x) => x.code === (nextTarget === 5 ? 'EARLY_BIRD_5' : 'EARLY_BIRD_20'));
@@ -225,8 +247,32 @@ export class AchievementsService {
     return null;
   }
 
+  private toDateKey(d: Date): string {
+    return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  }
+
+  private calculateStreak(activityDates: Set<string>): number {
+    const today = new Date();
+    let check = new Date(today);
+    const todayKey = this.toDateKey(today);
+    if (!activityDates.has(todayKey)) {
+      check.setDate(check.getDate() - 1);
+    }
+    let streak = 0;
+    for (let i = 0; i < 365; i++) {
+      const key = this.toDateKey(check);
+      if (activityDates.has(key)) {
+        streak++;
+        check.setDate(check.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    return streak;
+  }
+
   private async computeStats(userId: string): Promise<UserStats> {
-    const [sessions, masteries, explorations] = await Promise.all([
+    const [sessions, masteries, explorations, attendances] = await Promise.all([
       this.prisma.session.findMany({
         where: { userId, state: 'CLOSED' },
         include: { concept: { select: { domain: true } } },
@@ -240,28 +286,21 @@ export class AchievementsService {
         where: { userId },
         select: { messages: true },
       }),
+      this.prisma.userDailyAttendance.findMany({
+        where: { userId },
+        select: { date: true },
+      }),
     ]);
 
-    const dates = new Set(
-      sessions.map((s) => {
-        const d = new Date(s.createdAt);
-        return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-      }),
-    );
-
-    const today = new Date();
-    const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
-    let streak = 0;
-    if (dates.has(todayKey)) {
-      let check = new Date(today);
-      for (let i = 0; i < 365; i++) {
-        const key = `${check.getFullYear()}-${check.getMonth()}-${check.getDate()}`;
-        if (dates.has(key)) {
-          streak++;
-          check.setDate(check.getDate() - 1);
-        } else break;
-      }
+    const activityDates = new Set<string>();
+    for (const s of sessions) {
+      activityDates.add(this.toDateKey(new Date(s.createdAt)));
     }
+    for (const a of attendances) {
+      activityDates.add(this.toDateKey(new Date(a.date)));
+    }
+
+    const streak = this.calculateStreak(activityDates);
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
