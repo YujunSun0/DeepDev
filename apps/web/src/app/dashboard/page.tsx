@@ -161,16 +161,12 @@ const levelMetaCS: Record<number, { label: string; color: string; bg: string }> 
 export default function DashboardPage() {
   const searchParams = useSearchParams();
   const domainFromUrl = searchParams.get('domain');
-  const VALID_DOMAINS = ['javascript', 'dsa', 'os-network', 'react'];
-  const [activeDomain, setActiveDomain] = useState(
-    domainFromUrl && VALID_DOMAINS.includes(domainFromUrl) ? domainFromUrl : 'javascript',
-  );
+  const VALID_DOMAINS = ['javascript', 'dsa', 'os-network', 'react'] as const;
+  const activeDomain =
+    domainFromUrl && VALID_DOMAINS.includes(domainFromUrl as (typeof VALID_DOMAINS)[number])
+      ? domainFromUrl
+      : 'javascript';
 
-  useEffect(() => {
-    if (domainFromUrl && VALID_DOMAINS.includes(domainFromUrl) && domainFromUrl !== activeDomain) {
-      setActiveDomain(domainFromUrl);
-    }
-  }, [domainFromUrl, activeDomain]);
   const [sessionStartModalOpen, setSessionStartModalOpen] = useState(false);
   const [selectedConcept, setSelectedConcept] = useState<{ id: string; name: string; level: number } | null>(null);
   const [creating, setCreating] = useState(false);
@@ -323,7 +319,6 @@ export default function DashboardPage() {
           <DomainTabs
             activeId={activeDomain}
             onChange={(id) => {
-              setActiveDomain(id);
               router.replace(`/dashboard?domain=${id}`);
             }}
           />

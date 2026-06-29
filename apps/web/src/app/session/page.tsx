@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import { useConceptTree, useMasteries, useSessions } from '@/hooks/use-api';
@@ -26,20 +26,16 @@ const levelLabels: Record<number, string> = {
   5: '실전 사고력',
 };
 
-const VALID_DOMAINS = ['javascript', 'dsa', 'os-network', 'react'];
+const VALID_DOMAINS = ['javascript', 'dsa', 'os-network', 'react'] as const;
 
 export default function SessionPage() {
   const searchParams = useSearchParams();
   const domainFromUrl = searchParams.get('domain');
-  const initialDomain = domainFromUrl && VALID_DOMAINS.includes(domainFromUrl) ? domainFromUrl : 'javascript';
-  const [activeDomain, setActiveDomain] = useState(initialDomain);
+  const activeDomain =
+    domainFromUrl && VALID_DOMAINS.includes(domainFromUrl as (typeof VALID_DOMAINS)[number])
+      ? domainFromUrl
+      : 'javascript';
   const queryClient = useQueryClient();
-
-  useEffect(() => {
-    if (domainFromUrl && VALID_DOMAINS.includes(domainFromUrl)) {
-      setActiveDomain(domainFromUrl);
-    }
-  }, [domainFromUrl]);
   const { user } = useAuth();
   const { data: concepts, isLoading } = useConceptTree();
   const { data: masteries } = useMasteries();
@@ -117,7 +113,6 @@ export default function SessionPage() {
           <DomainTabs
             activeId={activeDomain}
             onChange={(id) => {
-              setActiveDomain(id);
               router.replace(`/session?domain=${id}`);
             }}
           />
