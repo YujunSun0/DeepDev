@@ -71,20 +71,14 @@ export function Sidebar() {
   const { user, logout } = useAuth();
   const pathname = usePathname();
   const { data: usage } = useUsage();
-  const { collapsed, setCollapsed, hydrated } = useSidebarCollapsed();
-  const [showLabels, setShowLabels] = useState(true);
+  const { collapsed, setCollapsed } = useSidebarCollapsed();
+  const [showLabels, setShowLabels] = useState(() => !collapsed);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
 
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
-
-  useEffect(() => {
-    if (hydrated) {
-      setShowLabels(!collapsed);
-    }
-  }, [hydrated, collapsed]);
 
   const handleToggleCollapsed = useCallback(() => {
     setCollapsed((prev) => {
@@ -119,7 +113,7 @@ export function Sidebar() {
       )
     : 0;
 
-  const showCollapsedTooltips = collapsed && hydrated;
+  const showCollapsedTooltips = collapsed;
 
   const renderSidebarContent = (compact: boolean, { forceLabels = false, showMobileClose = false } = {}) => {
     const labelsVisible = !compact && (forceLabels || showLabels);
@@ -127,26 +121,8 @@ export function Sidebar() {
     return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Logo */}
-      {compact ? (
-        <div className="flex h-16 flex-col items-center justify-center gap-0.5 px-2">
-          <Tooltip content="DeepDev" disabled={!showCollapsedTooltips}>
-            <Link href="/dashboard" className="flex items-center justify-center">
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary-500">
-                <Sparkles className="h-4 w-4 text-white" />
-              </div>
-            </Link>
-          </Tooltip>
-          <Tooltip content="사이드바 펼치기" disabled={!showCollapsedTooltips}>
-            <button
-              onClick={handleToggleCollapsed}
-              className="hidden rounded-lg p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 lg:block"
-            >
-              <ChevronLeft className="h-3.5 w-3.5 rotate-180" />
-            </button>
-          </Tooltip>
-        </div>
-      ) : (
-        <div className="relative flex h-16 items-center justify-between px-5">
+      <div className={`flex h-16 items-center justify-between ${compact ? 'px-3' : 'px-5'}`}>
+        <Tooltip content="DeepDev" disabled={!showCollapsedTooltips || !compact}>
           <Link href="/dashboard" className="flex min-w-0 items-center gap-2">
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary-500">
               <Sparkles className="h-4 w-4 text-white" />
@@ -156,35 +132,39 @@ export function Sidebar() {
               <span className="text-gray-900">Dev</span>
             </SidebarLabel>
           </Link>
-          <div className="flex items-center gap-1">
+        </Tooltip>
+        <div className="flex shrink-0 items-center gap-1">
+          <Tooltip content="사이드바 펼치기" disabled={!showCollapsedTooltips || !compact}>
             <button
               onClick={handleToggleCollapsed}
               className="hidden rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 hover:text-gray-600 lg:block"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className={`h-4 w-4 transition-transform duration-300 ${compact ? 'rotate-180' : ''}`} />
             </button>
-            {showMobileClose && (
-              <button
-                onClick={() => setMobileOpen(false)}
-                className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 lg:hidden"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
-          </div>
+          </Tooltip>
+          {showMobileClose && (
+            <button
+              onClick={() => setMobileOpen(false)}
+              className="rounded-lg p-1.5 text-gray-400 transition hover:bg-gray-100 lg:hidden"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Nav Sections */}
-      <nav className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-4">
+      <nav className={`flex-1 overflow-y-auto overflow-x-hidden py-4 ${compact ? 'px-2' : 'px-3'}`}>
         {NAV_SECTIONS.map((section) => (
           <div key={section.title} className="mb-6">
-            <SidebarLabel
-              show={labelsVisible}
-              className="mb-2 block px-3 text-[10px] font-bold uppercase tracking-wider text-gray-400"
-            >
-              {section.title}
-            </SidebarLabel>
+            {!compact && (
+              <SidebarLabel
+                show={labelsVisible}
+                className="mb-2 block px-3 text-[10px] font-bold uppercase tracking-wider text-gray-400"
+              >
+                {section.title}
+              </SidebarLabel>
+            )}
             <div className="space-y-1">
               {section.items.map((item) => {
                 const Icon = item.icon;
@@ -196,24 +176,28 @@ export function Sidebar() {
                     key={item.href}
                     content={item.label}
                     disabled={!showCollapsedTooltips || !compact}
-                    className="w-full"
+                    className={compact ? 'flex w-full justify-center' : 'w-full'}
                   >
                     <Link
                       href={item.href}
-                      className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+                      className={`group flex items-center rounded-xl py-2.5 text-sm font-medium transition-colors ${
+                        compact ? 'w-full justify-center' : 'w-full gap-3 px-3'
+                      } ${
                         isActive
                           ? 'bg-primary-50 text-primary-600'
                           : 'text-gray-500 hover:bg-gray-50 hover:text-gray-900'
-                      } ${compact ? 'justify-center px-2' : ''}`}
+                      }`}
                     >
                       <Icon
                         className={`h-[18px] w-[18px] shrink-0 ${
                           isActive ? 'text-primary-500' : 'text-gray-400 group-hover:text-gray-600'
                         }`}
                       />
-                      <SidebarLabel show={labelsVisible}>
-                        {item.label}
-                      </SidebarLabel>
+                      {!compact && (
+                        <SidebarLabel show={labelsVisible}>
+                          {item.label}
+                        </SidebarLabel>
+                      )}
                     </Link>
                   </Tooltip>
                 );
@@ -342,6 +326,8 @@ export function Sidebar() {
 
       {/* Desktop sidebar */}
       <aside
+        data-desktop-sidebar
+        suppressHydrationWarning
         onTransitionEnd={handleSidebarTransitionEnd}
         className={`sticky top-0 hidden h-screen shrink-0 overflow-hidden border-r border-gray-100 bg-white transition-[width] duration-300 ease-in-out lg:block ${
           collapsed ? 'w-[72px]' : 'w-64'

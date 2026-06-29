@@ -127,7 +127,7 @@ export function Tooltip({
     <>
       <span
         ref={triggerRef}
-        className={`inline-flex ${className}`}
+        className={className || 'inline-flex'}
         onMouseEnter={show}
         onMouseLeave={hide}
         onFocus={show}

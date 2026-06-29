@@ -3,6 +3,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
 import { AuthContext, useAuthProvider } from '@/hooks/use-auth';
+import { SidebarCollapsedProvider } from '@/hooks/use-sidebar-collapsed';
 
 function AuthProvider({ children }: { children: React.ReactNode }) {
   const auth = useAuthProvider();
@@ -24,7 +25,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>{children}</AuthProvider>
+      <AuthProvider>
+        <SidebarCollapsedProvider>{children}</SidebarCollapsedProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

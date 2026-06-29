@@ -57,8 +57,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ko">
+    <html lang="ko" suppressHydrationWarning>
       <body className="min-h-screen bg-white text-gray-900">
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var c=localStorage.getItem('deepdev_sidebar_collapsed')==='true';if(c)document.documentElement.classList.add('sidebar-collapsed');}catch(e){}})();`,
+          }}
+        />
         <Providers>
           {children}
           <Analytics />

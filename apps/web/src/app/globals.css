@@ -39,3 +39,10 @@ body {
 .animate-tooltip-in {
   animation: tooltip-in 150ms ease-out;
 }
+
+/* localStorage 접힘 상태 — React hydrate 전 첫 페인트용 */
+@media (min-width: 1024px) {
+  html.sidebar-collapsed [data-desktop-sidebar] {
+    width: 72px;
+  }
+}
