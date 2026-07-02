@@ -312,21 +312,14 @@ export default function HistoryPage() {
   const domainFromUrl = searchParams.get('domain');
 
   const [filter, setFilter] = useState<FilterState>('');
-  const [domain, setDomain] = useState(
-    domainFromUrl && HISTORY_DOMAINS.includes(domainFromUrl) ? domainFromUrl : '',
-  );
+  const domain =
+    domainFromUrl && HISTORY_DOMAINS.includes(domainFromUrl) ? domainFromUrl : '';
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<string | null>(detailFromQuery);
 
   useEffect(() => {
     if (detailFromQuery) setSelectedId(detailFromQuery);
   }, [detailFromQuery]);
-
-  useEffect(() => {
-    if (domainFromUrl !== null && domainFromUrl !== domain) {
-      setDomain(HISTORY_DOMAINS.includes(domainFromUrl) ? domainFromUrl : '');
-    }
-  }, [domainFromUrl, domain]);
 
   const stateParam = filter === 'IN_PROGRESS' ? undefined : filter || undefined;
   const { data, isLoading } = useSessions({
@@ -359,7 +352,6 @@ export default function HistoryPage() {
           <DomainTabs
             activeId={domain}
             onChange={(id) => {
-              setDomain(id);
               setPage(1);
               const params = new URLSearchParams(searchParams.toString());
               if (id) params.set('domain', id);
