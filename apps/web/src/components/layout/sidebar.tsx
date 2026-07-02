@@ -148,18 +148,18 @@ export function Sidebar() {
       </div>
 
       {/* Nav Sections */}
-      <nav className={`flex-1 overflow-y-auto overflow-x-hidden py-4 ${compact ? 'px-2' : 'px-3'}`}>
+      <nav className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden py-3 ${compact ? 'px-2' : 'px-3'}`}>
         {NAV_SECTIONS.map((section) => (
-          <div key={section.title} className="mb-6">
+          <div key={section.title} className="mb-4 last:mb-0">
             {!compact && (
               <SidebarLabel
                 show={labelsVisible}
-                className="mb-2 block px-3 text-[10px] font-bold uppercase tracking-wider text-gray-400"
+                className="mb-1.5 block px-3 text-[10px] font-bold uppercase tracking-wider text-gray-400"
               >
                 {section.title}
               </SidebarLabel>
             )}
-            <div className="space-y-1">
+            <div className="space-y-0.5">
               {section.items.map((item) => {
                 const Icon = item.icon;
                 const isActive =
@@ -174,7 +174,7 @@ export function Sidebar() {
                   >
                     <Link
                       href={item.href}
-                      className={`group flex items-center rounded-xl py-2.5 text-sm font-medium transition-colors ${
+                      className={`group flex items-center rounded-xl py-2 text-sm font-medium transition-colors ${
                         compact ? 'w-full justify-center' : 'w-full gap-3 px-3'
                       } ${
                         isActive
@@ -203,8 +203,8 @@ export function Sidebar() {
 
       {/* Usage Bar */}
       {labelsVisible && usage && (
-        <div className="mx-3 mb-4 shrink-0 rounded-2xl bg-gray-50 p-4">
-          <div className="mb-2 flex items-center justify-between">
+        <div className="mx-3 mb-3 shrink-0 rounded-xl bg-gray-50 p-3">
+          <div className="mb-1.5 flex items-center justify-between gap-2">
             <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
               이번 달 사용량
             </span>
@@ -212,7 +212,7 @@ export function Sidebar() {
               {usagePercent}%
             </span>
           </div>
-          <div className="mb-3 h-1.5 overflow-hidden rounded-full bg-gray-200">
+          <div className="mb-1.5 h-1 overflow-hidden rounded-full bg-gray-200">
             <div
               className={`h-full rounded-full transition-all duration-500 ${
                 usagePercent >= 90 ? 'bg-red-400' : usagePercent >= 70 ? 'bg-amber-400' : 'bg-primary-400'
@@ -220,24 +220,17 @@ export function Sidebar() {
               style={{ width: `${Math.min(usagePercent, 100)}%` }}
             />
           </div>
-          <div className="space-y-1 text-[10px] text-gray-400">
-            <div className="flex justify-between">
-              <span>세션</span>
-              <span>{usage.month.sessions}/{usage.limits.monthlySessions}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>토큰</span>
-              <span>{formatTokens(usage.month.tokens)}/{formatTokens(usage.limits.monthlyTokens)}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>탐구</span>
-              <span>{usage.month.explorations}/{usage.limits.monthlyExplorations}</span>
-            </div>
-          </div>
+          <p className="truncate text-[10px] leading-relaxed text-gray-400">
+            세션 {usage.month.sessions}/{usage.limits.monthlySessions}
+            {' · '}
+            토큰 {formatTokens(usage.month.tokens)}/{formatTokens(usage.limits.monthlyTokens)}
+            {' · '}
+            탐구 {usage.month.explorations}/{usage.limits.monthlyExplorations}
+          </p>
           {user.planType === 'FREE' ? (
             <Link
               href="/pricing"
-              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-primary-500 py-2 text-[11px] font-bold text-white transition hover:bg-primary-400"
+              className="mt-2 inline-flex items-center gap-1 text-[10px] font-semibold text-primary-500 transition hover:text-primary-600"
             >
               <Zap className="h-3 w-3" />
               PRO 업그레이드
@@ -245,7 +238,7 @@ export function Sidebar() {
           ) : (
             <Link
               href="/pricing"
-              className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-gray-100 py-2 text-[11px] font-semibold text-gray-600 transition hover:bg-gray-200"
+              className="mt-2 inline-flex text-[10px] font-medium text-gray-500 transition hover:text-gray-700"
             >
               구독 관리
             </Link>
@@ -254,8 +247,8 @@ export function Sidebar() {
       )}
 
       {/* User Profile */}
-      <div className={`shrink-0 border-t border-gray-100 p-3 ${compact ? 'flex flex-col items-center' : ''}`}>
-        <div className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ${compact ? 'flex-col px-0' : ''}`}>
+      <div className={`shrink-0 border-t border-gray-100 p-2.5 ${compact ? 'flex flex-col items-center' : ''}`}>
+        <div className={`flex items-center gap-2.5 rounded-xl px-2 py-2 ${compact ? 'flex-col px-0' : ''}`}>
           <Tooltip
             content={user.name ?? user.email.split('@')[0]}
             disabled={!showCollapsedTooltips || !compact}
@@ -265,22 +258,21 @@ export function Sidebar() {
             </div>
           </Tooltip>
           {labelsVisible && (
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold text-gray-800">
-                {user.name ?? user.email.split('@')[0]}
-              </p>
-              <div className="flex items-center gap-1.5">
-                <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-bold ${plan.bg} ${plan.text}`}>
+            <Tooltip content={user.email} disabled={compact}>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-gray-800">
+                  {user.name ?? user.email.split('@')[0]}
+                </p>
+                <span className={`mt-0.5 inline-block rounded-md px-1.5 py-0.5 text-[10px] font-bold ${plan.bg} ${plan.text}`}>
                   {plan.label}
                 </span>
-                <span className="truncate text-[10px] text-gray-400">{user.email}</span>
               </div>
-            </div>
+            </Tooltip>
           )}
           <Tooltip content="로그아웃" disabled={!showCollapsedTooltips || !compact}>
             <button
               onClick={() => setLogoutConfirmOpen(true)}
-              className="shrink-0 rounded-lg p-2 text-gray-400 transition hover:bg-red-50 hover:text-red-500"
+              className="shrink-0 rounded-lg p-1.5 text-gray-400 transition hover:bg-red-50 hover:text-red-500"
             >
               <LogOut className="h-4 w-4" />
             </button>
