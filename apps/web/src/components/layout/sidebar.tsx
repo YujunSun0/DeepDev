@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, type ReactNode } from 'react';
+import { useState, useCallback, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/hooks/use-auth';
@@ -9,10 +9,11 @@ import { useSidebarCollapsed } from '@/hooks/use-sidebar-collapsed';
 import {
   LayoutDashboard, GraduationCap, ClipboardList, BarChart3,
   MessageCircle, CreditCard, LogOut, ChevronLeft,
-  Menu, Zap, X, Sparkles, Settings, Trophy,
+  Zap, X, Sparkles, Settings, Trophy,
 } from 'lucide-react';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
 import { Tooltip } from '@/components/ui/tooltip';
+import { useSidebarMobile } from './sidebar-mobile-context';
 
 const NAV_SECTIONS = [
   {
@@ -73,12 +74,8 @@ export function Sidebar() {
   const { data: usage } = useUsage();
   const { collapsed, setCollapsed } = useSidebarCollapsed();
   const [showLabels, setShowLabels] = useState(() => !collapsed);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const { mobileOpen, setMobileOpen } = useSidebarMobile();
   const [logoutConfirmOpen, setLogoutConfirmOpen] = useState(false);
-
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
 
   const handleToggleCollapsed = useCallback(() => {
     setCollapsed((prev) => {
@@ -285,14 +282,6 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile toggle */}
-      <button
-        onClick={() => setMobileOpen(true)}
-        className="fixed left-4 top-4 z-50 rounded-xl bg-white p-2.5 shadow-md transition hover:shadow-lg lg:hidden"
-      >
-        <Menu className="h-5 w-5 text-gray-600" />
-      </button>
-
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
