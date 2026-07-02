@@ -329,24 +329,29 @@ export default function DashboardPage() {
         </div>
 
         {/* ───── Stats Row ───── */}
-        <div className="mb-8 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-5 grid grid-cols-2 gap-3 sm:mb-8 sm:gap-5 lg:grid-cols-4">
           {/* GSI - with ring */}
-          <div className="rounded-3xl bg-white p-6 shadow-sm">
-            <div className="flex items-center gap-5">
+          <div className="rounded-2xl bg-white p-3 shadow-sm sm:rounded-3xl sm:p-6">
+            <div className="flex items-center gap-3 sm:gap-5">
               <div className="relative">
-                <ProgressRing value={gsiValue} size={80} stroke={7} color={gsiColor} />
+                <div className="sm:hidden">
+                  <ProgressRing value={gsiValue} size={52} stroke={5} color={gsiColor} />
+                </div>
+                <div className="hidden sm:block">
+                  <ProgressRing value={gsiValue} size={80} stroke={7} color={gsiColor} />
+                </div>
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className={`text-lg font-extrabold ${gsiValue > 0 ? 'text-gray-900' : 'text-gray-200'}`}>
+                  <span className={`text-sm font-extrabold sm:text-lg ${gsiValue > 0 ? 'text-gray-900' : 'text-gray-200'}`}>
                     {gsiLoading ? '...' : gsiValue.toFixed(0)}
                   </span>
                 </div>
               </div>
               <div>
-                <p className="flex items-center text-xs font-medium text-gray-400">
+                <p className="flex items-center text-[11px] font-medium text-gray-400 sm:text-xs">
                   Skill Index
                   <InfoTooltip text="모든 개념의 평균 숙련도입니다" />
                 </p>
-                <p className="mt-1 text-sm font-bold text-gray-800">
+                <p className="mt-0.5 text-xs font-bold text-gray-800 sm:mt-1 sm:text-sm">
                   {gsiValue > 0 ? getMasteryLabel(gsiValue) : '측정 전'}
                 </p>
               </div>
@@ -354,20 +359,20 @@ export default function DashboardPage() {
           </div>
 
           {/* Sessions */}
-          <div className="rounded-3xl bg-white p-6 shadow-sm">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary-50">
-                <Flame className="h-6 w-6 text-primary-500" />
+          <div className="rounded-2xl bg-white p-3 shadow-sm sm:rounded-3xl sm:p-6">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary-50 sm:h-12 sm:w-12 sm:rounded-2xl">
+                <Flame className="h-4.5 w-4.5 text-primary-500 sm:h-6 sm:w-6" />
               </div>
-              <div>
-                <p className="flex items-center text-xs font-medium text-gray-400">
+              <div className="min-w-0">
+                <p className="flex items-center text-[11px] font-medium text-gray-400 sm:text-xs">
                   완료 세션
                   <InfoTooltip text="끝까지 완료한 학습 세션 수입니다" />
                 </p>
-                <p className="mt-1 text-2xl font-extrabold text-gray-900">
+                <p className="mt-0.5 text-xl font-extrabold text-gray-900 sm:mt-1 sm:text-2xl">
                   {closedSessions.length}
                   {inProgressSessions.length > 0 && (
-                    <span className="ml-1.5 text-xs font-medium text-gray-300">
+                    <span className="ml-1 text-[10px] font-medium text-gray-300 sm:ml-1.5 sm:text-xs">
                       +{inProgressSessions.length} 진행 중
                     </span>
                   )}
@@ -377,42 +382,42 @@ export default function DashboardPage() {
           </div>
 
           {/* Progress */}
-          <div className="rounded-3xl bg-white p-6 shadow-sm">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-50">
-                <BookOpen className="h-6 w-6 text-emerald-500" />
+          <div className="rounded-2xl bg-white p-3 shadow-sm sm:rounded-3xl sm:p-6">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 sm:h-12 sm:w-12 sm:rounded-2xl">
+                <BookOpen className="h-4.5 w-4.5 text-emerald-500 sm:h-6 sm:w-6" />
               </div>
-              <div>
-                <p className="flex items-center text-xs font-medium text-gray-400">
+              <div className="min-w-0">
+                <p className="flex items-center text-[11px] font-medium text-gray-400 sm:text-xs">
                   학습 진도
                   <InfoTooltip text="한 번이라도 학습한 개념 수입니다" />
                 </p>
-                <p className="mt-1 text-2xl font-extrabold text-gray-900">
+                <p className="mt-0.5 text-xl font-extrabold text-gray-900 sm:mt-1 sm:text-2xl">
                   {masteries?.length ?? 0}
-                  <span className="text-sm font-medium text-gray-300"> / {concepts?.length ?? 0}</span>
+                  <span className="text-xs font-medium text-gray-300 sm:text-sm"> / {concepts?.length ?? 0}</span>
                 </p>
               </div>
             </div>
-            <div className="mt-4 h-2 rounded-full bg-gray-100">
+            <div className="mt-2 h-1.5 rounded-full bg-gray-100 sm:mt-4 sm:h-2">
               <div
-                className="h-2 rounded-full bg-emerald-400 transition-all duration-500"
+                className="h-full rounded-full bg-emerald-400 transition-all duration-500"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
           </div>
 
           {/* Weak count */}
-          <div className="rounded-3xl bg-white p-6 shadow-sm">
-            <div className="flex items-center gap-4">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50">
-                <Target className="h-6 w-6 text-amber-500" />
+          <div className="rounded-2xl bg-white p-3 shadow-sm sm:rounded-3xl sm:p-6">
+            <div className="flex items-center gap-3 sm:gap-4">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 sm:h-12 sm:w-12 sm:rounded-2xl">
+                <Target className="h-4.5 w-4.5 text-amber-500 sm:h-6 sm:w-6" />
               </div>
-              <div>
-                <p className="flex items-center text-xs font-medium text-gray-400">
+              <div className="min-w-0">
+                <p className="flex items-center text-[11px] font-medium text-gray-400 sm:text-xs">
                   약점 개념
                   <InfoTooltip text="숙련도 50% 미만인 개념 수입니다" />
                 </p>
-                <p className="mt-1 text-2xl font-extrabold text-gray-900">{weakConcepts?.length ?? 0}</p>
+                <p className="mt-0.5 text-xl font-extrabold text-gray-900 sm:mt-1 sm:text-2xl">{weakConcepts?.length ?? 0}</p>
               </div>
             </div>
           </div>
