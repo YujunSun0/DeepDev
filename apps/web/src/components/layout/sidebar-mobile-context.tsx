@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, type ReactNode } from '
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Menu, Sparkles } from 'lucide-react';
+import { useScrollLock } from '@/hooks/use-scroll-lock';
 
 type SidebarMobileContextValue = {
   mobileOpen: boolean;
@@ -20,6 +21,8 @@ export function SidebarMobileProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setMobileOpen(false);
   }, [pathname]);
+
+  useScrollLock(mobileOpen);
 
   const toggleMobileOpen = () => setMobileOpen((prev) => !prev);
 
