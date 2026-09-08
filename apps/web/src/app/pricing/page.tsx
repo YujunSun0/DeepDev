@@ -7,16 +7,19 @@ import { useAuth } from '@/hooks/use-auth';
 import { api } from '@/lib/api';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { ErrorMessage } from '@/components/ui';
+import { SubscriptionSuccessModal } from '@/components/subscription-success-modal';
+
+const CHECKOUT_PENDING_KEY = 'deepdev_checkout_pending';
 
 export default function PricingPage() {
   const { user, refreshUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [checkoutEnabled, setCheckoutEnabled] = useState<boolean | null>(null);
+  const [successOpen, setSuccessOpen] = useState(false);
 
   const isPro = user?.planType === 'PRO' || user?.planType === 'MASTER';
 
-  // NEXT_PUBLIC: 빌드 시점에 적용되며, 프로덕션(Vercel 등)에서 결제 차단 시 사용
   const envCheckoutEnabled =
     process.env.NEXT_PUBLIC_BILLING_CHECKOUT_ENABLED !== 'false';
 
@@ -28,32 +31,33 @@ export default function PricingPage() {
     api
       .get<{ checkoutEnabled: boolean }>('/billing/status')
       .then(({ data }) => setCheckoutEnabled(data.checkoutEnabled))
-      .catch(() => setCheckoutEnabled(true)); // 실패 시 기본값: 활성화 (기존 동작 유지)
+      .catch(() => setCheckoutEnabled(true));
   }, [envCheckoutEnabled]);
+
+  // 새 탭 결제 후 돌아오면 플랜 갱신 + 성공 모달
+  useEffect(() => {
+    const onFocus = async () => {
+      if (sessionStorage.getItem(CHECKOUT_PENDING_KEY) !== '1') return;
+      await refreshUser();
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [refreshUser]);
+
+  useEffect(() => {
+    if (!isPro) return;
+    if (sessionStorage.getItem(CHECKOUT_PENDING_KEY) !== '1') return;
+    sessionStorage.removeItem(CHECKOUT_PENDING_KEY);
+    setSuccessOpen(true);
+  }, [isPro]);
 
   const handleUpgrade = async () => {
     setLoading(true);
     setError('');
     try {
       const { data } = await api.post<{ checkoutUrl: string }>('/billing/checkout');
+      sessionStorage.setItem(CHECKOUT_PENDING_KEY, '1');
       window.open(data.checkoutUrl, '_blank');
-      const onFocus = () => {
-        refreshUser();
-        window.removeEventListener('focus', onFocus);
-      };
-      window.addEventListener('focus', onFocus);
-    } catch (e: unknown) {
-      setError(getApiErrorMessage(e));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleManageSubscription = async () => {
-    setLoading(true);
-    try {
-      const { data } = await api.get<{ portalUrl: string }>('/billing/portal');
-      window.open(data.portalUrl, '_blank');
     } catch (e: unknown) {
       setError(getApiErrorMessage(e));
     } finally {
@@ -96,7 +100,7 @@ export default function PricingPage() {
         { text: '성장 그래프', included: true },
         { text: '우선 응답', included: true },
       ],
-      cta: isPro ? '현재 플랜' : 'Pro 시작하기',
+      cta: isPro ? '구독 중' : 'Pro 시작하기',
       highlight: true,
       isCurrent: isPro,
       icon: <Zap className="h-4 w-4" />,
@@ -212,14 +216,9 @@ export default function PricingPage() {
                 </button>
               ) : plan.isCurrent ? (
                 plan.name === 'Pro' ? (
-                  <button
-                    onClick={handleManageSubscription}
-                    disabled={loading}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gray-50 py-3.5 text-sm font-semibold text-gray-700 transition hover:bg-gray-100 disabled:opacity-50"
-                  >
-                    {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                    구독 관리
-                  </button>
+                  <div className="rounded-2xl bg-emerald-50 py-3.5 text-center text-sm font-semibold text-emerald-600">
+                    구독 중
+                  </div>
                 ) : (
                   <div className="rounded-2xl bg-gray-50 py-3.5 text-center text-sm font-semibold text-gray-400">
                     현재 플랜
@@ -255,15 +254,17 @@ export default function PricingPage() {
 
         {isPro && (
           <div className="mt-8 text-center">
-            <button
-              onClick={handleManageSubscription}
+            <Link
+              href="/billing"
               className="text-sm font-medium text-gray-400 transition hover:text-primary-500"
             >
-              구독 취소 · 결제 수단 변경 · 영수증 확인
-            </button>
+              구독 관리 · 사용량 · 결제 수단
+            </Link>
           </div>
         )}
       </div>
+
+      <SubscriptionSuccessModal open={successOpen} onClose={() => setSuccessOpen(false)} />
     </div>
   );
 }

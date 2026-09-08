@@ -25,6 +25,12 @@ export class BillingController {
     return { checkoutEnabled: this.billingService.isCheckoutEnabled() };
   }
 
+  @Get('subscription')
+  @UseGuards(JwtAuthGuard)
+  getSubscription(@CurrentUser() user: CurrentUserPayload) {
+    return this.billingService.getSubscriptionSummary(user.id);
+  }
+
   @Post('checkout')
   @UseGuards(JwtAuthGuard)
   createCheckout(@CurrentUser() user: CurrentUserPayload) {

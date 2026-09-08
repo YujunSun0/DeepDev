@@ -36,7 +36,8 @@ const NAV_SECTIONS = [
     title: '계정',
     items: [
       { href: '/settings', label: '설정', icon: Settings },
-      { href: '/pricing', label: '요금제', icon: CreditCard },
+      { href: '/billing', label: '구독 관리', icon: CreditCard },
+      { href: '/pricing', label: '요금제', icon: Zap },
     ],
   },
 ];
@@ -234,7 +235,7 @@ export function Sidebar() {
             </Link>
           ) : (
             <Link
-              href="/pricing"
+              href="/billing"
               className="mt-2 inline-flex text-[10px] font-medium text-gray-500 transition hover:text-gray-700"
             >
               구독 관리
