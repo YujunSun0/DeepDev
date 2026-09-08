@@ -80,7 +80,7 @@ export function Sidebar() {
   const handleToggleCollapsed = useCallback(() => {
     setCollapsed((prev) => {
       if (prev) {
-        // 펼칠 때: 너비 애니메이션과 함께 라벨 표시 (transitionend 대기 없음)
+        // 펼칠 때 : 너비 애니메이션과 함께 라벨 표시 (transitionend 대기 없음)
         setShowLabels(true);
       } else {
         setShowLabels(false);
