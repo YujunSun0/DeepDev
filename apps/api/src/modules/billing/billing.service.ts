@@ -266,6 +266,7 @@ export class BillingService {
     let cardBrand: string | null = null;
     let cardLastFour: string | null = null;
     let lsStatus: string | null = user.subscriptionStatus;
+    let cancelled = false;
 
     if (user.lsSubscriptionId && this.apiKey) {
       try {
@@ -284,6 +285,7 @@ export class BillingService {
           renewsAt = attrs.renews_at ?? null;
           endsAt = attrs.ends_at ?? null;
           lsStatus = attrs.status ?? lsStatus;
+          cancelled = Boolean(attrs.cancelled) || lsStatus === 'cancelled' || lsStatus === 'canceled';
           portalUrl = attrs.urls?.customer_portal ?? null;
           updatePaymentMethodUrl = attrs.urls?.update_payment_method ?? null;
           cardBrand = attrs.card_brand ?? null;
@@ -308,6 +310,7 @@ export class BillingService {
     return {
       planType: user.planType,
       status: lsStatus,
+      cancelled,
       priceMonthly: PLAN_PRICES[user.planType] ?? 0,
       renewsAt,
       endsAt,
@@ -319,6 +322,67 @@ export class BillingService {
       hasSubscription: Boolean(user.lsSubscriptionId),
       usage,
     };
+  }
+
+  private async updateSubscriptionCancelled(userId: string, cancelled: boolean) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user?.lsSubscriptionId) {
+      throw new BadRequestException('활성 구독이 없습니다');
+    }
+    if (!this.apiKey) {
+      throw new BadRequestException('결제 시스템이 아직 설정되지 않았습니다');
+    }
+
+    const response = await fetch(
+      `https://api.lemonsqueezy.com/v1/subscriptions/${user.lsSubscriptionId}`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Accept': 'application/vnd.api+json',
+          'Content-Type': 'application/vnd.api+json',
+          'Authorization': `Bearer ${this.apiKey}`,
+        },
+        body: JSON.stringify({
+          data: {
+            type: 'subscriptions',
+            id: user.lsSubscriptionId,
+            attributes: { cancelled },
+          },
+        }),
+      },
+    );
+
+    if (!response.ok) {
+      const errText = await response.text();
+      this.logger.error(
+        `Lemon Squeezy subscription ${cancelled ? 'cancel' : 'resume'} failed: ${errText}`,
+      );
+      throw new BadRequestException(
+        cancelled ? '구독 해지에 실패했습니다' : '구독 재개에 실패했습니다',
+      );
+    }
+
+    const result: any = await response.json();
+    const attrs = result.data?.attributes ?? {};
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        subscriptionStatus: attrs.status ?? (cancelled ? 'cancelled' : 'active'),
+        // 기간 종료 전까지는 PRO 유지
+        planType: attrs.status === 'expired' ? 'FREE' : 'PRO',
+      },
+    });
+
+    return this.getSubscriptionSummary(userId);
+  }
+
+  async cancelSubscription(userId: string) {
+    return this.updateSubscriptionCancelled(userId, true);
+  }
+
+  async resumeSubscription(userId: string) {
+    return this.updateSubscriptionCancelled(userId, false);
   }
 
   async getPortalUrl(userId: string) {

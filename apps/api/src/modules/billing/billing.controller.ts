@@ -55,6 +55,18 @@ export class BillingController {
     }
   }
 
+  @Post('cancel')
+  @UseGuards(JwtAuthGuard)
+  cancelSubscription(@CurrentUser() user: CurrentUserPayload) {
+    return this.billingService.cancelSubscription(user.id);
+  }
+
+  @Post('resume')
+  @UseGuards(JwtAuthGuard)
+  resumeSubscription(@CurrentUser() user: CurrentUserPayload) {
+    return this.billingService.resumeSubscription(user.id);
+  }
+
   @Get('portal')
   @UseGuards(JwtAuthGuard)
   getPortalUrl(@CurrentUser() user: CurrentUserPayload) {

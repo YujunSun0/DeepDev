@@ -16,13 +16,14 @@ import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/hooks/use-auth';
 import { api } from '@/lib/api';
 import { getApiErrorMessage } from '@/lib/api-error';
-import { ErrorMessage } from '@/components/ui';
+import { ErrorMessage, ConfirmModal } from '@/components/ui';
 import { SubscriptionSuccessModal } from '@/components/subscription-success-modal';
 import type { UsageStatus } from '@/hooks/use-api';
 
 interface SubscriptionSummary {
   planType: string;
   status: string | null;
+  cancelled: boolean;
   priceMonthly: number;
   renewsAt: string | null;
   endsAt: string | null;
@@ -126,7 +127,8 @@ function BillingContent() {
   const searchParams = useSearchParams();
   const { user, refreshUser } = useAuth();
   const [successOpen, setSuccessOpen] = useState(false);
-  const [portalLoading, setPortalLoading] = useState(false);
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState('');
   const handledCheckout = useRef(false);
 
@@ -154,6 +156,7 @@ function BillingContent() {
 
   const planType = data?.planType ?? user?.planType ?? 'FREE';
   const isPro = planType === 'PRO' || planType === 'MASTER';
+  const isCancelled = Boolean(data?.cancelled);
   const resetDate = formatDate(data?.usageResetsAt ?? null);
   const renewDate = formatDate(data?.renewsAt ?? data?.endsAt ?? null);
   const left = daysLeft(data?.renewsAt ?? data?.endsAt ?? data?.usageResetsAt ?? null);
@@ -167,20 +170,32 @@ function BillingContent() {
 
   const PlanIcon = planMeta.icon;
 
-  const openPortal = async () => {
-    setPortalLoading(true);
+  const handleCancel = async () => {
+    setActionLoading(true);
     setError('');
     try {
-      if (data?.portalUrl) {
-        window.open(data.portalUrl, '_blank');
-        return;
-      }
-      const { data: portal } = await api.get<{ portalUrl: string }>('/billing/portal');
-      window.open(portal.portalUrl, '_blank');
+      await api.post('/billing/cancel');
+      await refreshUser();
+      await refetch();
+      setCancelOpen(false);
     } catch (e: unknown) {
       setError(getApiErrorMessage(e));
     } finally {
-      setPortalLoading(false);
+      setActionLoading(false);
+    }
+  };
+
+  const handleResume = async () => {
+    setActionLoading(true);
+    setError('');
+    try {
+      await api.post('/billing/resume');
+      await refreshUser();
+      await refetch();
+    } catch (e: unknown) {
+      setError(getApiErrorMessage(e));
+    } finally {
+      setActionLoading(false);
     }
   };
 
@@ -193,7 +208,7 @@ function BillingContent() {
           <p className="mb-2 text-sm font-semibold text-primary-500">Billing</p>
           <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">구독 관리</h1>
           <p className="mt-2 text-sm text-gray-400">
-            플랜과 이번 달 사용량을 확인하고, 결제 수단·해지는 Lemon Squeezy에서 관리할 수 있어요.
+            플랜과 이번 달 사용량을 DeepDev에서 바로 관리할 수 있어요.
           </p>
         </div>
 
@@ -225,15 +240,23 @@ function BillingContent() {
                 </div>
                 <p className="mb-4 text-sm text-gray-500">
                   {isPro
-                    ? renewDate
-                      ? `다음 갱신일 ${renewDate}${left != null ? ` (${left}일 남음)` : ''}`
-                      : resetDate
-                        ? `사용량 초기화 ${resetDate}${left != null ? ` (${left}일 남음)` : ''}`
-                        : '구독이 활성화되어 있습니다'
+                    ? isCancelled && data.endsAt
+                      ? `${formatDate(data.endsAt)}까지 Pro 유지 · 이후 Free로 전환`
+                      : renewDate
+                        ? `다음 갱신일 ${renewDate}${left != null ? ` (${left}일 남음)` : ''}`
+                        : resetDate
+                          ? `사용량 초기화 ${resetDate}${left != null ? ` (${left}일 남음)` : ''}`
+                          : '구독이 활성화되어 있습니다'
                     : '무료 플랜을 이용 중입니다'}
                 </p>
                 <div className="mb-5 flex flex-wrap gap-2">
-                  <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-600">
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
+                      isCancelled
+                        ? 'bg-amber-50 text-amber-700'
+                        : 'bg-emerald-50 text-emerald-600'
+                    }`}
+                  >
                     {statusLabel(data.status)}
                   </span>
                   {data.cardBrand && data.cardLastFour && (
@@ -243,19 +266,37 @@ function BillingContent() {
                   )}
                 </div>
                 {isPro ? (
-                  <button
-                    type="button"
-                    onClick={openPortal}
-                    disabled={portalLoading || !data.hasSubscription}
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {portalLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                  <div className="flex flex-col gap-2">
+                    {isCancelled ? (
+                      <button
+                        type="button"
+                        onClick={handleResume}
+                        disabled={actionLoading || !data.hasSubscription}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-primary-500 py-3 text-sm font-semibold text-white transition hover:bg-primary-400 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                        구독 재개하기
+                      </button>
                     ) : (
-                      <ExternalLink className="h-4 w-4" />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setError('');
+                          setCancelOpen(true);
+                        }}
+                        disabled={actionLoading || !data.hasSubscription}
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        구독 해지
+                      </button>
                     )}
-                    결제·해지 관리
-                  </button>
+                    <Link
+                      href="/pricing"
+                      className="inline-flex w-full items-center justify-center rounded-2xl py-2 text-sm font-medium text-gray-400 transition hover:text-primary-500"
+                    >
+                      요금제 비교
+                    </Link>
+                  </div>
                 ) : (
                   <Link
                     href="/pricing"
@@ -349,35 +390,24 @@ function BillingContent() {
 
             {isPro && (
               <div className="rounded-3xl bg-white p-6 shadow-sm">
-                <h2 className="mb-1 text-base font-bold text-gray-900">결제 · 영수증</h2>
+                <h2 className="mb-1 text-base font-bold text-gray-900">결제 수단</h2>
                 <p className="mb-5 text-sm text-gray-400">
-                  카드 변경, 구독 해지, 영수증 확인은 Lemon Squeezy 고객 포털에서 안전하게 처리됩니다.
+                  카드 정보 변경만 결제사(Lemon Squeezy) 보안 페이지에서 진행됩니다.
+                  구독 해지·재개는 이 페이지에서 바로 할 수 있어요.
                 </p>
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <button
-                    type="button"
-                    onClick={openPortal}
-                    disabled={portalLoading || !data.hasSubscription}
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gray-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
+                {data.updatePaymentMethodUrl ? (
+                  <a
+                    href={data.updatePaymentMethodUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 px-5 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
                   >
-                    {portalLoading ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <ExternalLink className="h-4 w-4" />
-                    )}
-                    고객 포털 열기
-                  </button>
-                  {data.updatePaymentMethodUrl && (
-                    <a
-                      href={data.updatePaymentMethodUrl}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 px-5 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
-                    >
-                      결제 수단 변경
-                    </a>
-                  )}
-                </div>
+                    <ExternalLink className="h-4 w-4" />
+                    결제 수단 변경
+                  </a>
+                ) : (
+                  <p className="text-sm text-gray-400">연결된 결제 수단 정보가 아직 없습니다.</p>
+                )}
               </div>
             )}
           </div>
@@ -385,6 +415,20 @@ function BillingContent() {
       </div>
 
       <SubscriptionSuccessModal open={successOpen} onClose={() => setSuccessOpen(false)} />
+      <ConfirmModal
+        open={cancelOpen}
+        onClose={() => setCancelOpen(false)}
+        onConfirm={handleCancel}
+        title="구독을 해지할까요?"
+        message="이번 결제 기간이 끝날 때까지 Pro는 유지되고, 이후 Free로 전환됩니다. 기간이 끝나기 전에는 언제든 다시 재개할 수 있어요."
+        confirmText="해지하기"
+        cancelText="닫기"
+        variant="danger"
+        closeOnConfirm={false}
+        confirmLoading={actionLoading}
+        confirmLoadingText="해지 중..."
+        error={error || undefined}
+      />
     </div>
   );
 }
