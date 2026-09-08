@@ -93,9 +93,29 @@ export class BillingService {
     });
 
     if (!response.ok) {
-      const err = await response.text();
-      this.logger.error('Lemon Squeezy checkout creation failed', err);
-      throw new BadRequestException('체크아웃 생성에 실패했습니다');
+      const errText = await response.text();
+      this.logger.error(
+        `Lemon Squeezy checkout creation failed (${response.status}): ${errText}`,
+      );
+
+      let detail = '';
+      try {
+        const parsed = JSON.parse(errText) as {
+          errors?: Array<{ detail?: string; title?: string; status?: string }>;
+        };
+        detail = parsed.errors
+          ?.map((e) => e.detail || e.title)
+          .filter(Boolean)
+          .join('; ') ?? '';
+      } catch {
+        detail = errText.slice(0, 300);
+      }
+
+      throw new BadRequestException(
+        detail
+          ? `체크아웃 생성에 실패했습니다: ${detail}`
+          : '체크아웃 생성에 실패했습니다',
+      );
     }
 
     const result: any = await response.json();
