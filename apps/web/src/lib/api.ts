@@ -25,7 +25,7 @@ api.interceptors.response.use(
     const isAuthRequest =
       error.config?.url?.includes('/auth/login') ||
       error.config?.url?.includes('/auth/register') ||
-      error.config?.url?.includes('/auth/oauth/link');
+      error.config?.url?.includes('/auth/oauth/');
     if (
       error.response?.status === 401 &&
       !isAuthRequest &&

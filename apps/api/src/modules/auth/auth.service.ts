@@ -6,6 +6,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { randomBytes } from 'crypto';
 import { UsersService } from '../users/users.service';
 import { EmailService } from '../email/email.service';
 import { RegisterRequestDto, LoginRequestDto } from './dto';
@@ -13,8 +14,31 @@ import { RegisterRequestDto, LoginRequestDto } from './dto';
 const DELETED_ACCOUNT_MESSAGE =
   '탈퇴한 계정은 재가입할 수 없습니다. 탈퇴 후에는 복구가 불가능합니다.';
 
+/** OAuth 일회용 교환 코드 유효 시간 */
+const OAUTH_EXCHANGE_CODE_TTL_MS = 60 * 1000;
+
+export interface AuthResponse {
+  accessToken: string;
+  user: {
+    id: string;
+    email: string;
+    name: string | null;
+    planType: string;
+    preferredLanguage: string | null;
+  };
+}
+
 @Injectable()
 export class AuthService {
+  /**
+   * OAuth 콜백 리다이렉트 URL에 JWT를 직접 싣지 않기 위한 일회용 코드 저장소.
+   * 코드는 60초 동안 한 번만 교환할 수 있습니다.
+   */
+  private readonly oauthExchangeCodes = new Map<
+    string,
+    { auth: AuthResponse; expiresAt: number }
+  >();
+
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
@@ -269,6 +293,36 @@ export class AuthService {
     }
 
     return this.buildAuthResponse(user);
+  }
+
+  /** 로그인 결과를 일회용 코드로 보관하고 코드를 돌려줍니다. */
+  createOAuthExchangeCode(auth: AuthResponse): string {
+    this.pruneExpiredOAuthExchangeCodes();
+    const code = randomBytes(32).toString('base64url');
+    this.oauthExchangeCodes.set(code, {
+      auth,
+      expiresAt: Date.now() + OAUTH_EXCHANGE_CODE_TTL_MS,
+    });
+    return code;
+  }
+
+  /** 일회용 코드를 토큰으로 교환합니다. 코드는 성공 여부와 관계없이 즉시 폐기됩니다. */
+  exchangeOAuthCode(code: string): AuthResponse {
+    const entry = this.oauthExchangeCodes.get(code);
+    this.oauthExchangeCodes.delete(code);
+    if (!entry || entry.expiresAt < Date.now()) {
+      throw new UnauthorizedException(
+        '로그인 요청이 만료되었거나 유효하지 않습니다. 다시 로그인해주세요.',
+      );
+    }
+    return entry.auth;
+  }
+
+  private pruneExpiredOAuthExchangeCodes() {
+    const now = Date.now();
+    for (const [code, entry] of this.oauthExchangeCodes) {
+      if (entry.expiresAt < now) this.oauthExchangeCodes.delete(code);
+    }
   }
 
   /** @deprecated processOAuthCallback / confirmOAuthLink 사용 */

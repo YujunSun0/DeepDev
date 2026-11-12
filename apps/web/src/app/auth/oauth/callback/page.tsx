@@ -15,14 +15,16 @@ function OAuthCallbackContent() {
   useEffect(() => {
     if (handledRef.current) return;
 
-    const token = searchParams.get('token');
-    if (!token) {
+    const code = searchParams.get('code');
+    if (!code) {
       setError('로그인 정보가 없습니다. 다시 시도해주세요.');
       return;
     }
 
     handledRef.current = true;
-    completeOAuthLogin(token).catch(() => {
+    // 일회용 코드가 주소창·방문 기록에 남지 않도록 바로 지웁니다.
+    window.history.replaceState(null, '', window.location.pathname);
+    completeOAuthLogin(code).catch(() => {
       setError('로그인 처리 중 오류가 발생했습니다. 다시 시도해주세요.');
     });
   }, [searchParams, completeOAuthLogin]);

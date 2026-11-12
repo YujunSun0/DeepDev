@@ -123,10 +123,11 @@ export async function verifyEmailAndLogin(token: string): Promise<VerifyEmailRes
   return data;
 }
 
-export async function loginWithOAuthToken(accessToken: string): Promise<AuthUser | null> {
-  if (typeof window === 'undefined') return null;
-  localStorage.setItem(TOKEN_KEY, accessToken);
-  return refreshUser();
+/** OAuth 콜백으로 받은 일회용 코드를 토큰으로 교환해 로그인합니다. */
+export async function loginWithOAuthCode(code: string): Promise<AuthUser> {
+  const { data } = await api.post<AuthResponse>('/auth/oauth/exchange', { code });
+  saveAuth(data);
+  return data.user;
 }
 
 export interface OAuthLinkPreview {

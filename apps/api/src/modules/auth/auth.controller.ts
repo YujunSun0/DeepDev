@@ -1,9 +1,26 @@
-import { Controller, Post, Body, Get, Query, Req, Res, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Get,
+  Query,
+  Req,
+  Res,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { AuthGuard } from '@nestjs/passport';
 import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import { RegisterRequestDto, LoginRequestDto, ResendVerificationDto, ConfirmOAuthLinkDto } from './dto';
+import {
+  RegisterRequestDto,
+  LoginRequestDto,
+  ResendVerificationDto,
+  ConfirmOAuthLinkDto,
+  ExchangeOAuthCodeDto,
+} from './dto';
 import type { GoogleProfile } from './strategies/google.strategy';
 import type { GithubProfile } from './strategies/github.strategy';
 
@@ -78,6 +95,12 @@ export class AuthController {
     return this.authService.previewOAuthLink(token);
   }
 
+  @Post('oauth/exchange')
+  @HttpCode(HttpStatus.OK)
+  exchangeOAuthCode(@Body() dto: ExchangeOAuthCodeDto) {
+    return this.authService.exchangeOAuthCode(dto.code);
+  }
+
   @Post('oauth/link')
   confirmOAuthLink(@Body() dto: ConfirmOAuthLinkDto) {
     return this.authService.confirmOAuthLink(dto.linkToken, dto.password);
@@ -101,7 +124,12 @@ export class AuthController {
         return res.redirect(url);
       }
 
-      const url = `${this.getFrontendUrl('/auth/oauth/callback')}?token=${encodeURIComponent(result.accessToken)}`;
+      // JWT 대신 60초짜리 일회용 코드만 URL에 실어 보냅니다.
+      const code = this.authService.createOAuthExchangeCode({
+        accessToken: result.accessToken,
+        user: result.user,
+      });
+      const url = `${this.getFrontendUrl('/auth/oauth/callback')}?code=${encodeURIComponent(code)}`;
       return res.redirect(url);
     } catch {
       return res.redirect(this.getFrontendUrl('/login?error=oauth_failed'));

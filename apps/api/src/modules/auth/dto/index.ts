@@ -26,6 +26,11 @@ export class ResendVerificationDto {
   email!: string;
 }
 
+export class ExchangeOAuthCodeDto {
+  @IsString()
+  code!: string;
+}
+
 export class ConfirmOAuthLinkDto {
   @IsString()
   linkToken!: string;

@@ -21,7 +21,7 @@ interface AuthContextValue {
   register: (email: string, password: string, name?: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
-  completeOAuthLogin: (accessToken: string) => Promise<void>;
+  completeOAuthLogin: (code: string) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextValue>({
@@ -88,11 +88,8 @@ export function useAuthProvider(): AuthContextValue {
     if (updated) setUser(updated);
   }, []);
 
-  const completeOAuthLogin = useCallback(async (accessToken: string) => {
-    const updated = await authLib.loginWithOAuthToken(accessToken);
-    if (!updated) {
-      throw new Error('OAuth login failed');
-    }
+  const completeOAuthLogin = useCallback(async (code: string) => {
+    const updated = await authLib.loginWithOAuthCode(code);
     setUser(updated);
     router.replace('/dashboard');
   }, [router]);
