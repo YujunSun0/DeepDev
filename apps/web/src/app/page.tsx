@@ -4,6 +4,7 @@ import { SiJavascript, SiReact } from 'react-icons/si';
 import { HiOutlineAcademicCap, HiOutlineServerStack, HiOutlineCircleStack } from 'react-icons/hi2';
 import { LandingNav } from '@/components/landing-nav';
 import { LandingCta } from '@/components/landing-cta';
+import { SiteFooter } from '@/components/legal/site-footer';
 
 const domains = [
   { name: 'JavaScript', tag: '출시', available: true, icon: <SiJavascript className="h-6 w-6 sm:h-8 sm:w-8" />, iconColor: 'text-yellow-400' },
@@ -295,16 +296,7 @@ export default function HomePage() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-gray-100 bg-gray-50 py-6 sm:py-8">
-        <div className="mx-auto max-w-6xl px-4 text-center sm:px-6">
-          <span className="text-xs font-bold text-gray-800 sm:text-sm">
-            <span className="text-primary-500">Deep</span>Dev
-          </span>
-          <p className="mt-2 text-xs text-gray-400">
-            &copy; 2026 DeepDev. Developer Mastery Platform.
-          </p>
-        </div>
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

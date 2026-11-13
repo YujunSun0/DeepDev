@@ -31,6 +31,7 @@ function LoginContent() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [agreed, setAgreed] = useState(false);
   const [formError, setFormError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
@@ -81,6 +82,10 @@ function LoginContent() {
     e.preventDefault();
     setFormError('');
     clearQueryError();
+    if (!isLogin && !agreed) {
+      setFormError('이용약관과 개인정보처리방침에 동의해 주세요.');
+      return;
+    }
     setLoading(true);
 
     try {
@@ -232,9 +237,31 @@ function LoginContent() {
               />
             </div>
 
+            {!isLogin && (
+              <label className="flex cursor-pointer items-start gap-2.5 rounded-2xl bg-gray-50 px-4 py-3 text-xs leading-5 text-gray-600">
+                <input
+                  type="checkbox"
+                  checked={agreed}
+                  onChange={(e) => setAgreed(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 accent-primary-500"
+                />
+                <span>
+                  (필수) 만 14세 이상이며,{' '}
+                  <Link href="/terms" target="_blank" className="font-semibold text-gray-800 underline underline-offset-2">
+                    이용약관
+                  </Link>
+                  과{' '}
+                  <Link href="/privacy" target="_blank" className="font-semibold text-gray-800 underline underline-offset-2">
+                    개인정보처리방침
+                  </Link>
+                  (국외 이전 포함)에 동의합니다.
+                </span>
+              </label>
+            )}
+
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || (!isLogin && !agreed)}
               className="w-full rounded-2xl bg-primary-500 py-3.5 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-400 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? '처리 중...' : isLogin ? '로그인' : '가입하기'}
@@ -271,6 +298,17 @@ function LoginContent() {
               </svg>
               GitHub로 계속하기
             </a>
+            <p className="px-2 text-center text-[11px] leading-4 text-gray-400">
+              소셜 계정으로 계속하면 만 14세 이상이며{' '}
+              <Link href="/terms" target="_blank" className="underline underline-offset-2 hover:text-gray-600">
+                이용약관
+              </Link>
+              과{' '}
+              <Link href="/privacy" target="_blank" className="underline underline-offset-2 hover:text-gray-600">
+                개인정보처리방침
+              </Link>
+              에 동의하는 것으로 간주됩니다.
+            </p>
           </div>
 
           <div className="mt-6 text-center">

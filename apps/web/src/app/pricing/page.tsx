@@ -252,6 +252,28 @@ export default function PricingPage() {
           ))}
         </div>
 
+        <div className="mx-auto mt-10 max-w-2xl space-y-1.5 text-center text-xs leading-5 text-gray-400">
+          <p>
+            유료 플랜은 1개월 단위 정기결제이며 해지 전까지 매월 자동 갱신됩니다. 언제든 해지할 수
+            있고, 해지 후에도 결제한 기간이 끝날 때까지 이용할 수 있습니다.
+          </p>
+          <p>
+            첫 결제 후 7일 이내에는 전액 환불됩니다. 결제는 판매자(Merchant of Record)인
+            Paddle.com을 통해 처리됩니다.
+          </p>
+          <p className="space-x-3">
+            <Link href="/terms" className="underline-offset-2 hover:text-gray-600 hover:underline">
+              이용약관
+            </Link>
+            <Link href="/privacy" className="underline-offset-2 hover:text-gray-600 hover:underline">
+              개인정보처리방침
+            </Link>
+            <Link href="/refund" className="underline-offset-2 hover:text-gray-600 hover:underline">
+              환불정책
+            </Link>
+          </p>
+        </div>
+
         {isPro && (
           <div className="mt-8 text-center">
             <Link
