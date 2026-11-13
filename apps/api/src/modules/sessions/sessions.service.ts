@@ -100,18 +100,23 @@ export class SessionsService {
 
   /* ── Basic CRUD ── */
 
-  async create(userId: string, conceptId: string, level: number) {
+  /**
+   * @param _requestedLevel 클라이언트가 보낸 레벨. 조작될 수 있으므로 저장·검증에는 개념의 실제 레벨을 사용
+   */
+  async create(userId: string, conceptId: string, _requestedLevel?: number) {
     const { allowed, reason } = await this.usage.canCreateSession(userId);
     if (!allowed) throw new ForbiddenException(reason);
 
     const concept = await this.concepts.findById(conceptId);
     if (!concept) throw new NotFoundException('개념을 찾을 수 없습니다');
 
+    await this.usage.assertLevelAllowed(userId, concept.level);
+
     return this.prisma.session.create({
       data: {
         userId,
         conceptId,
-        level,
+        level: concept.level,
         state: STATES.INIT,
         tokenUsed: 0,
         context: {},

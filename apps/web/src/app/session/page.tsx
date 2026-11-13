@@ -11,12 +11,7 @@ import { api } from '@/lib/api';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { ErrorMessage } from '@/components/ui';
 import { SessionSkeleton } from '@/components/skeletons';
-
-const PLAN_MAX_LEVEL: Record<string, number> = {
-  FREE: 2,
-  PRO: 4,
-  MASTER: 5,
-};
+import { getMaxLevel } from '@/lib/plan';
 
 const levelLabels: Record<number, string> = {
   1: '기초 개념',
@@ -44,7 +39,7 @@ export default function SessionPage() {
   const [error, setError] = useState('');
   const router = useRouter();
 
-  const maxLevel = PLAN_MAX_LEVEL[user?.planType ?? 'FREE'] ?? 2;
+  const maxLevel = getMaxLevel(user?.planType);
   const masteryMap = new Map(
     masteries?.map((m) => [m.conceptId, m.masteryScore]) ?? [],
   );

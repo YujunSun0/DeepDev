@@ -22,12 +22,7 @@ import { GrowthChart } from '@/components/charts';
 import { DashboardSkeleton } from '@/components/skeletons';
 import { ConfirmModal } from '@/components/ui/confirm-modal';
 import { LanguageOnboardingOverlay, PREFERRED_LANGUAGE_DISMISS_KEY } from '@/components/language-onboarding-overlay';
-
-const PLAN_MAX_LEVEL: Record<string, number> = {
-  FREE: 2,
-  PRO: 4,
-  MASTER: 5,
-};
+import { getMaxLevel } from '@/lib/plan';
 
 /* ───── helpers ───── */
 
@@ -188,7 +183,7 @@ export default function DashboardPage() {
   const firstError = gsiErrorObj ?? conceptsErrorObj ?? sessionsErrorObj ?? masteriesErrorObj;
 
   const isPro = user?.planType === 'PRO' || user?.planType === 'MASTER';
-  const maxLevel = PLAN_MAX_LEVEL[user?.planType ?? 'FREE'] ?? 2;
+  const maxLevel = getMaxLevel(user?.planType);
 
   // 회원가입(이메일 인증) 완료 후 대시보드 진입 시 선호 언어 선택 오버레이 (게임 직업 선택 느낌)
   useEffect(() => {

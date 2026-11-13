@@ -33,6 +33,9 @@ export class ExplorationsService {
     });
     if (!concept) throw new NotFoundException('개념을 찾을 수 없습니다.');
 
+    // PRD 7장: 탐구도 플랜 레벨 한도를 따름 (Free는 Level 2까지)
+    await this.usage.assertLevelAllowed(userId, concept.level);
+
     const systemPrompt = EXPLORATION_SYSTEM_PROMPT(
       concept.name,
       concept.description,

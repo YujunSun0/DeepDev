@@ -1,6 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { getPlanLimit, type PlanLimit } from './plan-limits';
+import { getLevelLockMessage, getPlanLimit, type PlanLimit } from './plan-limits';
 
 export interface UsageStatus {
   plan: string;
@@ -27,6 +27,16 @@ function getMonthStart(): Date {
 @Injectable()
 export class UsageService {
   constructor(private readonly prisma: PrismaService) {}
+
+  /** 개념 레벨이 사용자 플랜에서 허용되는지 서버에서 확인 (화면 잠금만으로는 API 직접 호출을 막을 수 없음) */
+  async assertLevelAllowed(userId: string, level: number): Promise<void> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { planType: true },
+    });
+    const message = getLevelLockMessage(user?.planType ?? 'FREE', level);
+    if (message) throw new ForbiddenException(message);
+  }
 
   async getUsageStatus(userId: string): Promise<UsageStatus> {
     const user = await this.prisma.user.findUnique({ where: { id: userId } });

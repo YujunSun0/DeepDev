@@ -4,7 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   Compass, Send, Loader2, MessageCircle, Plus,
-  ChevronLeft, ChevronDown, Sparkles, BookOpen, LogOut, Menu, X,
+  ChevronLeft, ChevronDown, Sparkles, BookOpen, LogOut, Menu, X, Lock,
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useConceptTree, useAchievementsCheck } from '@/hooks/use-api';
@@ -15,6 +15,8 @@ import { UsageWarning } from '@/components/usage-warning';
 import { DomainTabs } from '@/components/domain-tabs';
 import { AchievementModal } from '@/components/achievement-modal';
 import { useAutoResizeTextarea } from '@/hooks/use-auto-resize-textarea';
+import { useAuth } from '@/hooks/use-auth';
+import { getMaxLevel } from '@/lib/plan';
 
 function useTypewriter(text: string, speed = 12) {
   const [displayed, setDisplayed] = useState('');
@@ -718,6 +720,9 @@ interface NewChatViewProps {
 
 function NewChatView({ concepts, selectedConceptId, onSelectConcept }: NewChatViewProps) {
   const [activeDomain, setActiveDomain] = useState('javascript');
+  const { user } = useAuth();
+  // 화면 잠금은 안내용 — 실제 제한은 서버(assertLevelAllowed)가 검증
+  const maxLevel = getMaxLevel(user?.planType);
 
   const conceptsByDomain = concepts.filter(
     (c) => (c.domain ?? 'javascript') === activeDomain,
@@ -769,21 +774,33 @@ function NewChatView({ concepts, selectedConceptId, onSelectConcept }: NewChatVi
         ) : (
           Object.entries(levelGroups)
           .sort(([a], [b]) => Number(a) - Number(b))
-          .map(([level, group]) => (
+          .map(([level, group]) => {
+            const locked = Number(level) > maxLevel;
+            return (
             <div key={level}>
               <h3 className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-gray-400">
                 <span className="rounded-md bg-gray-100 px-1.5 py-0.5 text-[10px]">Lv.{level}</span>
                 {levelLabels[Number(level)] ?? ''}
+                {locked && (
+                  <Link
+                    href="/pricing"
+                    className="ml-auto flex items-center gap-1 normal-case tracking-normal font-medium text-primary-500 hover:text-primary-600"
+                  >
+                    <Lock className="h-3 w-3" />
+                    상위 플랜에서 이용 가능
+                  </Link>
+                )}
               </h3>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {group.map((concept) => (
                   <button
                     key={concept.id}
                     onClick={() => onSelectConcept(concept.id)}
-                    className={`rounded-2xl border-2 px-3 py-2.5 text-left transition ${
+                    disabled={locked}
+                    className={`rounded-2xl border-2 px-3 py-2.5 text-left transition disabled:cursor-not-allowed disabled:opacity-40 ${
                       selectedConceptId === concept.id
                         ? 'border-primary-400 bg-primary-50'
-                        : 'border-gray-100 bg-white hover:border-primary-200 hover:bg-primary-50/30'
+                        : `border-gray-100 bg-white ${locked ? '' : 'hover:border-primary-200 hover:bg-primary-50/30'}`
                     }`}
                   >
                     <p className={`text-sm font-medium ${
@@ -796,7 +813,8 @@ function NewChatView({ concepts, selectedConceptId, onSelectConcept }: NewChatVi
                 ))}
               </div>
             </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
