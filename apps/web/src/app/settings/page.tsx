@@ -206,7 +206,11 @@ export default function SettingsPage() {
         onClose={() => { setDeleteModalOpen(false); setDeleteError(''); }}
         onConfirm={handleDeleteAccount}
         title="회원 탈퇴"
-        message="정말 탈퇴하시겠습니까? 모든 학습 기록이 삭제되며 이 작업은 되돌릴 수 없습니다."
+        message={
+          user?.planType && user.planType !== 'FREE'
+            ? '정말 탈퇴하시겠습니까? 이용 중인 유료 구독은 즉시 해지되고 남은 기간은 사용할 수 없게 됩니다. 모든 학습 기록이 삭제되며 이 작업은 되돌릴 수 없습니다.'
+            : '정말 탈퇴하시겠습니까? 모든 학습 기록이 삭제되며 이 작업은 되돌릴 수 없습니다.'
+        }
         confirmText="탈퇴하기"
         cancelText="취소"
         variant="danger"

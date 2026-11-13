@@ -1,9 +1,13 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { BillingService } from '../billing/billing.service';
 
 @Injectable()
 export class UsersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly billing: BillingService,
+  ) {}
 
   async create(data: {
     email: string;
@@ -62,11 +66,15 @@ export class UsersService {
     });
   }
 
-  /** Soft delete: deletedAt 설정, 관련 데이터는 1년 보관 후 정리 예정 */
+  /**
+   * Soft delete: deletedAt 설정, 관련 데이터는 1년 보관 후 정리 예정.
+   * 유료 구독은 먼저 즉시 해지하고, 해지에 실패하면 탈퇴하지 않는다.
+   */
   async deleteUser(userId: string): Promise<void> {
+    await this.billing.cancelForAccountDeletion(userId);
     await this.prisma.user.update({
       where: { id: userId },
-      data: { deletedAt: new Date() },
+      data: { deletedAt: new Date(), planType: 'FREE' },
     });
   }
 

@@ -255,6 +255,55 @@ describe('BillingService (Paddle)', () => {
     });
   });
 
+  describe('회원 탈퇴 시 구독 해지', () => {
+    const respond = (status: number, data: any) => ({
+      ok: status < 400,
+      status,
+      text: async () => JSON.stringify(status < 400 ? { data } : { error: { detail: 'x' } }),
+    });
+
+    beforeEach(() => {
+      user.paddleSubscriptionId = 'sub_1';
+      user.subscriptionStatus = 'active';
+    });
+
+    it('활성 구독은 즉시 해지한다', async () => {
+      fetchMock
+        .mockResolvedValueOnce(respond(200, subscription()))
+        .mockResolvedValueOnce(respond(200, subscription({ status: 'canceled' })));
+      await service.cancelForAccountDeletion('user-1');
+      expect(fetchMock).toHaveBeenLastCalledWith(
+        'https://sandbox-api.paddle.com/subscriptions/sub_1/cancel',
+        expect.objectContaining({ method: 'POST', body: JSON.stringify({ effective_from: 'immediately' }) }),
+      );
+    });
+
+    it('구독이 없거나 이미 해지됐으면 Paddle을 호출하지 않는다', async () => {
+      user.subscriptionStatus = 'canceled';
+      await service.cancelForAccountDeletion('user-1');
+      user.paddleSubscriptionId = null;
+      user.subscriptionStatus = null;
+      await service.cancelForAccountDeletion('user-1');
+      expect(fetchMock).not.toHaveBeenCalled();
+    });
+
+    it('Paddle에서 이미 해지된 구독이면 해지 요청을 보내지 않는다', async () => {
+      fetchMock.mockResolvedValueOnce(respond(200, subscription({ status: 'canceled' })));
+      await service.cancelForAccountDeletion('user-1');
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    });
+
+    it('해지에 실패하면 탈퇴를 막는다', async () => {
+      fetchMock.mockResolvedValueOnce(respond(500, null));
+      await expect(service.cancelForAccountDeletion('user-1')).rejects.toThrow('탈퇴를 완료하지 못했습니다');
+    });
+
+    it('Paddle에 없는 구독(404)은 해지할 것이 없으므로 통과시킨다', async () => {
+      fetchMock.mockResolvedValueOnce(respond(404, null));
+      await expect(service.cancelForAccountDeletion('user-1')).resolves.toBeUndefined();
+    });
+  });
+
   describe('결제창', () => {
     it('서버에서 user_id를 담은 거래를 만든다', async () => {
       fetchMock.mockResolvedValueOnce({

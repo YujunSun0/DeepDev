@@ -3,6 +3,7 @@ import {
   Logger,
   BadRequestException,
   ForbiddenException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Prisma, User } from '@prisma/client';
@@ -495,6 +496,35 @@ export class BillingService {
       },
     });
     return this.getSubscriptionSummary(userId);
+  }
+
+  /**
+   * 회원 탈퇴 직전에 호출. 탈퇴한 계정에 갱신 결제가 일어나지 않도록 구독을 즉시 해지한다.
+   * 해지에 실패하면 예외를 던져 탈퇴 자체를 막는다 (계정은 없는데 결제만 계속되는 상황 방지).
+   */
+  async cancelForAccountDeletion(userId: string): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    const subId = user?.paddleSubscriptionId;
+    if (!subId) return;
+    if (user.subscriptionStatus === 'canceled' || user.subscriptionStatus === REFUNDED_STATUS) return;
+
+    try {
+      // DB 상태가 늦을 수 있으니 Paddle에서 실제 상태를 확인
+      const sub = await this.paddleRequest<PaddleSubscription>('GET', `/subscriptions/${subId}`);
+      if (sub.status === 'canceled') return;
+      await this.paddleRequest('POST', `/subscriptions/${subId}/cancel`, {
+        effective_from: 'immediately',
+      });
+    } catch (err) {
+      // 다른 환경(샌드박스↔라이브)의 구독이라 존재하지 않으면 해지할 것도 없음
+      if (err instanceof PaddleApiError && err.status === 404) {
+        this.logger.warn(`Subscription ${subId} not found while deleting user ${userId}`);
+        return;
+      }
+      throw new ServiceUnavailableException(
+        '구독 해지에 실패해 탈퇴를 완료하지 못했습니다. 잠시 후 다시 시도해 주세요.',
+      );
+    }
   }
 
   /** Paddle 고객 포털 (영수증·결제 내역). 세션 URL은 일시적이라 요청 시마다 발급 */
