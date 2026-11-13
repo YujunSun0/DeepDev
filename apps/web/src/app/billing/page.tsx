@@ -64,19 +64,16 @@ function statusLabel(status: string | null) {
   switch (status) {
     case 'active':
       return '활성';
-    case 'on_trial':
+    case 'trialing':
       return '체험 중';
-    case 'cancelled':
     case 'canceled':
-      return '해지 예정';
+      return '해지됨';
     case 'past_due':
       return '결제 지연';
-    case 'expired':
-      return '만료됨';
     case 'paused':
       return '일시정지';
-    case 'paid':
-      return '결제 완료';
+    case 'refunded':
+      return '환불됨';
     default:
       return status ?? '확인 중';
   }
@@ -129,6 +126,7 @@ function BillingContent() {
   const [successOpen, setSuccessOpen] = useState(false);
   const [cancelOpen, setCancelOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [portalLoading, setPortalLoading] = useState(false);
   const [error, setError] = useState('');
   const handledCheckout = useRef(false);
 
@@ -147,8 +145,13 @@ function BillingContent() {
     handledCheckout.current = true;
 
     (async () => {
+      // 결제 완료 직후에는 Paddle webhook이 아직 도착하지 않았을 수 있어 잠시 재확인
+      for (let attempt = 0; attempt < 8; attempt++) {
+        const { data: summary } = await refetch();
+        if (summary && summary.planType !== 'FREE') break;
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
       await refreshUser();
-      await refetch();
       setSuccessOpen(true);
       router.replace('/billing', { scroll: false });
     })();
@@ -196,6 +199,23 @@ function BillingContent() {
       setError(getApiErrorMessage(e));
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const handleOpenPortal = async () => {
+    // 팝업 차단을 피하려고 클릭 시점에 창을 먼저 열고, 발급된 포털 URL로 이동
+    const popup = window.open('', '_blank');
+    setPortalLoading(true);
+    setError('');
+    try {
+      const { data: portal } = await api.get<{ portalUrl: string }>('/billing/portal');
+      if (popup) popup.location.href = portal.portalUrl;
+      else window.location.href = portal.portalUrl;
+    } catch (e: unknown) {
+      popup?.close();
+      setError(getApiErrorMessage(e));
+    } finally {
+      setPortalLoading(false);
     }
   };
 
@@ -257,7 +277,7 @@ function BillingContent() {
                         : 'bg-emerald-50 text-emerald-600'
                     }`}
                   >
-                    {statusLabel(data.status)}
+                    {isCancelled ? '해지 예정' : statusLabel(data.status)}
                   </span>
                   {data.cardBrand && data.cardLastFour && (
                     <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
@@ -392,22 +412,33 @@ function BillingContent() {
               <div className="rounded-3xl bg-white p-6 shadow-sm">
                 <h2 className="mb-1 text-base font-bold text-gray-900">결제 수단</h2>
                 <p className="mb-5 text-sm text-gray-400">
-                  카드 정보 변경만 결제사(Lemon Squeezy) 보안 페이지에서 진행됩니다.
+                  카드 정보 변경과 영수증 확인은 결제사(Paddle) 보안 페이지에서 진행됩니다.
                   구독 해지·재개는 이 페이지에서 바로 할 수 있어요.
                 </p>
-                {data.updatePaymentMethodUrl ? (
-                  <a
-                    href={data.updatePaymentMethodUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 px-5 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+                <div className="flex flex-wrap gap-2">
+                  {data.updatePaymentMethodUrl ? (
+                    <a
+                      href={data.updatePaymentMethodUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 px-5 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      결제 수단 변경
+                    </a>
+                  ) : (
+                    <p className="text-sm text-gray-400">연결된 결제 수단 정보가 아직 없습니다.</p>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleOpenPortal}
+                    disabled={portalLoading}
+                    className="inline-flex items-center justify-center gap-2 rounded-2xl border border-gray-200 px-5 py-3 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:opacity-50"
                   >
-                    <ExternalLink className="h-4 w-4" />
-                    결제 수단 변경
-                  </a>
-                ) : (
-                  <p className="text-sm text-gray-400">연결된 결제 수단 정보가 아직 없습니다.</p>
-                )}
+                    {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />}
+                    결제 내역 · 영수증
+                  </button>
+                </div>
               </div>
             )}
           </div>

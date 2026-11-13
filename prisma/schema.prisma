@@ -25,8 +25,10 @@ model User {
   emailVerified      Boolean  @default(false) @map("email_verified")
   planType           PlanType @default(FREE) @map("plan_type")
   preferredLanguage String?  @map("preferred_language") @db.VarChar(32)
-  lsCustomerId       String?  @map("ls_customer_id")
-  lsSubscriptionId   String?  @map("ls_subscription_id")
+  paddleCustomerId     String?   @map("paddle_customer_id")     // ctm_...
+  paddleSubscriptionId String?   @map("paddle_subscription_id") // sub_... (현재 구독)
+  /// 마지막으로 반영한 구독 webhook의 occurred_at. 순서가 뒤바뀐 이벤트를 무시하는 데 사용
+  paddleEventAt        DateTime? @map("paddle_event_at")
   subscriptionStatus String?  @map("subscription_status")
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
@@ -39,6 +41,8 @@ model User {
   dailyAttendances UserDailyAttendance[]
 
   @@index([authProvider, authProviderId])
+  @@index([paddleCustomerId])
+  @@index([paddleSubscriptionId])
   @@map("users")
 }
 
@@ -149,4 +153,14 @@ model UserDailyAttendance {
 
   @@unique([userId, date])
   @@map("user_daily_attendances")
+}
+
+/// Paddle webhook 중복 처리 방지 (재전송 시 같은 event_id로 옴)
+model WebhookEvent {
+  id        String   @id @default(uuid())
+  eventId   String   @unique @map("event_id")   // evt_...
+  eventType String   @map("event_type")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("webhook_events")
 }

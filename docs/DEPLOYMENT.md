@@ -19,7 +19,11 @@
 - `CORS_ORIGIN`: 웹 도메인 (쉼표로 복수 허용)
 - `NEXT_PUBLIC_SITE_URL`: 실제 사이트 URL
 - `NEXT_PUBLIC_API_URL`: API 서버 URL
-- Lemon Squeezy: 프로덕션 스토어 키
+- Paddle (API 서버): `PADDLE_API_KEY`, `PADDLE_CLIENT_SIDE_TOKEN`, `PADDLE_WEBHOOK_SECRET`, `PADDLE_PRO_PRICE_ID`
+  - 라이브 전환 시 live 계정에서 키·상품·가격·webhook을 새로 만들어 모두 교체 (sandbox ID는 live에 없음)
+  - Paddle → Developer tools → Notifications: `https://<API 도메인>/api/billing/webhook`
+    - 이벤트: `subscription.*`, `adjustment.created`, `adjustment.updated`
+  - Paddle → Checkout → Checkout settings: 기본 결제 링크 `https://<웹 도메인>/pricing`
 
 ### 2. 헬스체크
 
@@ -51,7 +55,7 @@
 ### 7. Rate Limiting
 
 - `THROTTLE_TTL`, `THROTTLE_LIMIT` — 기본 분당 100회
-- Lemon Squeezy webhook은 제한 제외
+- Paddle webhook(`/api/billing/webhook`)은 제한 제외
 
 ### 8. 보안 헤더 (Helmet)
 

@@ -22,7 +22,7 @@ export class BillingController {
 
   @Get('status')
   getCheckoutStatus() {
-    return { checkoutEnabled: this.billingService.isCheckoutEnabled() };
+    return this.billingService.getCheckoutStatus();
   }
 
   @Get('subscription')
@@ -41,7 +41,7 @@ export class BillingController {
   @SkipThrottle()
   async handleWebhook(
     @Req() req: RawBodyRequest<Request>,
-    @Headers('x-signature') signature: string,
+    @Headers('paddle-signature') signature: string,
   ) {
     const rawBody = req.rawBody;
     if (!rawBody) {

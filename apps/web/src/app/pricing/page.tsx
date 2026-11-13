@@ -7,16 +7,19 @@ import { useAuth } from '@/hooks/use-auth';
 import { api } from '@/lib/api';
 import { getApiErrorMessage } from '@/lib/api-error';
 import { ErrorMessage } from '@/components/ui';
-import { SubscriptionSuccessModal } from '@/components/subscription-success-modal';
+import { getPaddle, type PaddleClientConfig } from '@/lib/paddle';
 
-const CHECKOUT_PENDING_KEY = 'deepdev_checkout_pending';
+interface BillingStatus {
+  checkoutEnabled: boolean;
+  paddle: PaddleClientConfig | null;
+}
 
 export default function PricingPage() {
-  const { user, refreshUser } = useAuth();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [checkoutEnabled, setCheckoutEnabled] = useState<boolean | null>(null);
-  const [successOpen, setSuccessOpen] = useState(false);
+  const [paddleConfig, setPaddleConfig] = useState<PaddleClientConfig | null>(null);
 
   const isPro = user?.planType === 'PRO' || user?.planType === 'MASTER';
 
@@ -29,37 +32,43 @@ export default function PricingPage() {
       return;
     }
     api
-      .get<{ checkoutEnabled: boolean }>('/billing/status')
-      .then(({ data }) => setCheckoutEnabled(data.checkoutEnabled))
-      .catch(() => setCheckoutEnabled(true));
+      .get<BillingStatus>('/billing/status')
+      .then(({ data }) => {
+        setCheckoutEnabled(data.checkoutEnabled);
+        setPaddleConfig(data.paddle);
+      })
+      .catch(() => setCheckoutEnabled(false));
   }, [envCheckoutEnabled]);
 
-  // 새 탭 결제 후 돌아오면 플랜 갱신 + 성공 모달
+  // 이 페이지는 Paddle 기본 결제 링크라서 미리 초기화해 둔다 (?_ptxn= 링크로 오면 결제창 자동 오픈)
   useEffect(() => {
-    const onFocus = async () => {
-      if (sessionStorage.getItem(CHECKOUT_PENDING_KEY) !== '1') return;
-      await refreshUser();
-    };
-    window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
-  }, [refreshUser]);
-
-  useEffect(() => {
-    if (!isPro) return;
-    if (sessionStorage.getItem(CHECKOUT_PENDING_KEY) !== '1') return;
-    sessionStorage.removeItem(CHECKOUT_PENDING_KEY);
-    setSuccessOpen(true);
-  }, [isPro]);
+    if (!paddleConfig) return;
+    getPaddle(paddleConfig).catch(() => undefined);
+  }, [paddleConfig]);
 
   const handleUpgrade = async () => {
+    if (!paddleConfig) return;
     setLoading(true);
     setError('');
     try {
-      const { data } = await api.post<{ checkoutUrl: string }>('/billing/checkout');
-      sessionStorage.setItem(CHECKOUT_PENDING_KEY, '1');
-      window.open(data.checkoutUrl, '_blank');
+      const [paddle, { data }] = await Promise.all([
+        getPaddle(paddleConfig),
+        api.post<{ transactionId: string; customerEmail: string | null }>('/billing/checkout'),
+      ]);
+      if (!paddle) throw new Error('결제 모듈을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.');
+
+      paddle.Checkout.open({
+        transactionId: data.transactionId,
+        ...(data.customerEmail ? { customer: { email: data.customerEmail } } : {}),
+        settings: {
+          displayMode: 'overlay',
+          locale: 'ko',
+          // 결제가 끝나면 구독 관리 화면에서 webhook 반영을 기다린 뒤 성공 모달을 띄움
+          successUrl: `${window.location.origin}/billing?checkout=success`,
+        },
+      });
     } catch (e: unknown) {
-      setError(getApiErrorMessage(e));
+      setError(e instanceof Error && !('response' in e) ? e.message : getApiErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -234,7 +243,7 @@ export default function PricingPage() {
               ) : plan.name === 'Pro' ? (
                 <button
                   onClick={handleUpgrade}
-                  disabled={loading || checkoutEnabled === null}
+                  disabled={loading || checkoutEnabled === null || !paddleConfig}
                   className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary-500 py-3.5 text-sm font-semibold text-white transition hover:bg-primary-400 disabled:opacity-50"
                 >
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
@@ -285,8 +294,6 @@ export default function PricingPage() {
           </div>
         )}
       </div>
-
-      <SubscriptionSuccessModal open={successOpen} onClose={() => setSuccessOpen(false)} />
     </div>
   );
 }
